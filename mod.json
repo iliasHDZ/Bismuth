@@ -1,0 +1,17 @@
+{
+	"geode": "4.10.0",
+	"gd": {
+		"win": "2.2074",
+		"android": "2.2074",
+		"mac": "2.2074",
+		"ios": "2.2074"
+	},
+	"id": "iliashdz.bismuth",
+	"name": "Bismuth",
+	"version": "v1.0.0",
+	"developer": "IliasHDZ",
+	"description": "The ultimate rendering optimization mod",
+	"dependencies": {
+		"geode.node-ids": ">=v1.20.0"
+	}
+}
