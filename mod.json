@@ -13,5 +13,11 @@
 	"description": "The ultimate rendering optimization mod",
 	"dependencies": {
 		"geode.node-ids": ">=v1.20.0"
+	},
+	"resources": {
+		"files": [
+			"resources/shaders/*.vert",
+			"resources/shaders/*.frag"
+		]
 	}
 }

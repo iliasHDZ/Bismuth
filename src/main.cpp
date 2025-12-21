@@ -23,6 +23,8 @@ class $modify(MyGJBaseGameLayer, GJBaseGameLayer) {
                 continue;
             */
 
+            const char* a = ""_spr;
+
             if (!object->m_isDecoration2 && object->m_unk4C4 != m_gameState.m_unkUint2) {
                 object->m_unk4C4 = m_gameState.m_unkUint2;
 
@@ -51,17 +53,20 @@ class $modify(MyGJBaseGameLayer, GJBaseGameLayer) {
 
 int i = 0;
 
+/*
 cocos2d::CCLabelBMFont* thing = nullptr;
+
+PlayLayer* pl = nullptr;
 
 #include <Geode/modify/PlayLayer.hpp>
 class $modify(MyPlayLayer, PlayLayer) {
     void updateVisibility(float dt) {
         i++;
         if (i < 100) {
-            if (thing) thing->setString("DECOMP");
+            // if (thing) thing->setString("DECOMP");
             ((decomp_PlayLayer*)this)->virtual_updateVisibility(dt);
         } else {
-            if (thing) thing->setString("ORIGINAL");
+            // if (thing) thing->setString("ORIGINAL");
             PlayLayer::updateVisibility(dt);
             if (i >= 200)
                 i = 0;
@@ -76,7 +81,9 @@ class $modify(MyPlayLayer, PlayLayer) {
         thing->setAnchorPoint(cocos2d::CCPoint(0, 1));
         thing->setPosition(cocos2d::CCPoint(5, cocos2d::CCDirector::get()->getWinSize().height));
 
-        addChild(thing);
+        pl = this;
+
+        // addChild(thing);
         return true;
     }
 
@@ -85,5 +92,32 @@ class $modify(MyPlayLayer, PlayLayer) {
             thing->removeFromParentAndCleanup(true);
             thing = nullptr;
         }
+        PlayLayer::onQuit();
     }
 };
+*/
+
+/*
+#include <Geode/modify/CCKeyboardDispatcher.hpp>
+class $modify(FnCCKeyboardDispatcher, cocos2d::CCKeyboardDispatcher) {
+    bool dispatchKeyboardMSG(cocos2d::enumKeyCodes key, bool keyDown, bool p3) {
+        if (keyDown && key == cocos2d::KEY_N && pl) {
+            CCObject* o;
+            CCARRAY_FOREACH(pl->m_objects, o) {
+                GameObject* obj = (GameObject*)o;
+
+                geode::log::info("OBJECT {}, {}", obj->m_objectID, obj->getAtlasIndex());
+
+                CCObject* o2;
+                CCARRAY_FOREACH(obj->getChildren(), o2) {
+                    cocos2d::CCSprite* sprite = (cocos2d::CCSprite*)o2;
+
+                    geode::log::info("SUBOBJECT {}", sprite->getAtlasIndex());
+                }
+            }
+        }
+
+        return cocos2d::CCKeyboardDispatcher::dispatchKeyboardMSG(key, keyDown, p3);
+    }
+};
+*/

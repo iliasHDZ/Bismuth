@@ -36,18 +36,34 @@ class $modify(MyCCKeyboardDispatcher, cocos2d::CCKeyboardDispatcher) {
     }
 };
 
+static u64 getTime() {
+    return (std::chrono::high_resolution_clock::now() - modStartTime).count();
+}
+
 class $modify(MyCCDisplayLinkDirector, cocos2d::CCDisplayLinkDirector) {
     void mainLoop() {
+        u64 processTime = 0;
+
         if (takeSnapshotNextFrame) {
             isTakingSnapshot = true;
             takeSnapshotNextFrame = false;
             timeSpentInFunction.clear();
+            glBeginQuery(GL_TIME_ELAPSED, 1);
+            processTime = getTime();
         }
+
         
         CCDisplayLinkDirector::mainLoop();
         
+        
         if (isTakingSnapshot) {
             isTakingSnapshot = false;
+
+            processTime = getTime() - processTime;
+
+            i64 gpuTime = 0;
+            glEndQuery(GL_TIME_ELAPSED);
+            glGetQueryObjecti64v(1, GL_QUERY_RESULT, &gpuTime);
 
             std::vector<std::pair<void*, i64>> functionsTime;
             for (auto pair : timeSpentInFunction)
@@ -63,13 +79,12 @@ class $modify(MyCCDisplayLinkDirector, cocos2d::CCDisplayLinkDirector) {
         
             for (auto [name, time] : functionsTime)
                 geode::log::info("- {} : {}ms", (const char*)name, (double)time / 1000000.0);
+
+            geode::log::info("Rendering time: {}ms", (double)gpuTime / 1000000.0);
+            geode::log::info("Processing time: {}ms", (double)processTime / 1000000.0);
         }
     }
 };
-
-static u64 getTime() {
-    return (std::chrono::high_resolution_clock::now() - modStartTime).count();
-}
 
 static void addToFunctionTime(void* name, u64 time) {
     if (timeSpentInFunction.find(name) == timeSpentInFunction.end())
