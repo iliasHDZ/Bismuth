@@ -130,17 +130,29 @@ void ObjectBatch::writeGameObject(GameObject* object) {
 
     SpriteSheet sheet = (SpriteSheet)object->getParentMode();
 
-    writeSprite(object, transform, sheet, object->m_activeMainColorID, object->m_isObjectBlack);
+    /*
+    log::info("OBJECT {}", (void*)object);
+    log::info("- isObjectBlack: {}", object->m_isObjectBlack);
+    log::info("- isColorSpriteBlack: {}", object->m_isColorSpriteBlack);
+    log::info("- hasColorSprite: {}", object->m_hasColorSprite);
+    log::info("- hasCustomChild: {}", object->m_hasCustomChild);
+
+    log::info("- mainSprite:");
+    */
+    writeSprite(object, transform, sheet, object->m_activeMainColorID, object->m_isObjectBlack, object->m_isColorSpriteBlack, object->m_colorSprite);
+
 
     if (object->m_glowSprite) {
-        writeSprite(object->m_glowSprite, transform, SpriteSheet::GLOW, object->m_activeMainColorID, object->m_isObjectBlack);
+        // log::info("- glowSprite:");
+        writeSprite(object->m_glowSprite, transform, SpriteSheet::GLOW, object->m_activeMainColorID, object->m_isObjectBlack, false);
         
         if (object->m_glowSprite->getParent() == object)
             log::warn("Glow sprite of object is child of main sprite after setup");
     }
 
     if (object->m_hasColorSprite && object->m_colorSprite) {
-        writeSprite(object->m_colorSprite, transform, sheet, object->m_activeDetailColorID, object->m_isColorSpriteBlack);
+        // log::info("- colorSprite:");
+        writeSprite(object->m_colorSprite, transform, sheet, object->m_activeDetailColorID, object->m_isColorSpriteBlack, object->m_isColorSpriteBlack);
         
         if (object->m_colorSprite->getParent() == object)
             log::warn("Color sprite of object is child of main sprite after setup");
@@ -152,11 +164,20 @@ void ObjectBatch::writeSprite(
     cocos2d::CCAffineTransform transform,
     SpriteSheet sheet,
     u32 colorChannel,
-    bool isBlack
+    bool isBlack,
+    bool isChildrenBlack,
+    cocos2d::CCSprite* childToIgnore
 ) {
     CCTexture2D* texture = renderer->getSpriteSheetTexture(sheet);
     
     transform = CCAffineTransformConcat(sprite->nodeToParentTransform(), transform);
+
+    CCObject* child;
+    CCARRAY_FOREACH(sprite->getChildren(), child) {
+        auto sprite = (CCSprite*)child;
+        if (sprite->getZOrder() < 0 && sprite != childToIgnore)
+            writeSprite(sprite, transform, sheet, colorChannel, isChildrenBlack, isChildrenBlack, childToIgnore);
+    }
     
     if (texture && !sprite->getDontDraw()) {
         CCPoint relativeOffset = sprite->getUnflippedOffsetPosition();
@@ -186,6 +207,8 @@ void ObjectBatch::writeSprite(
         crop.size.width  *= contentScale / texWidth;
         crop.size.height *= contentScale / texHeight;
 
+        // log::info("  - {}SPRITE", isBlack ? "BLACK " : "");
+
         auto& quad = writeQuad(
             transform,
             sprite->getOffsetPosition(),
@@ -203,9 +226,10 @@ void ObjectBatch::writeSprite(
         }
     }
 
-    CCObject* child;
     CCARRAY_FOREACH(sprite->getChildren(), child) {
-        writeSprite((CCSprite*)child, transform, sheet, colorChannel, false);
+        auto sprite = (CCSprite*)child;
+        if (sprite->getZOrder() >= 0 && sprite != childToIgnore)
+            writeSprite(sprite, transform, sheet, colorChannel, isChildrenBlack, isChildrenBlack, childToIgnore);
     }
 }
 

@@ -49,7 +49,12 @@ bool Renderer::init(PlayLayer* layer) {
         objectBatch.writeGameObject(it.get());
     objectBatch.finishWriting();
 
-    shader = Shader::create("object.vert", "object.frag");
+    std::map<std::string, std::string> shaderMacroVariables;
+
+    shaderMacroVariables["TOTAL_OBJECT_COUNT"] = "1";
+    shaderMacroVariables["TOTAL_GROUP_COUNT"]  = "1";
+
+    shader = Shader::create("object.vert", "object.frag", shaderMacroVariables);
     if (!shader)
         return false;
 

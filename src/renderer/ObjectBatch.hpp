@@ -100,7 +100,9 @@ private:
         cocos2d::CCAffineTransform transform,
         SpriteSheet sheet,
         u32 colorChannel,
-        bool isBlack
+        bool isBlack,
+        bool isChildrenBlack,
+        cocos2d::CCSprite* childToIgnore = nullptr
     );
 
     void prepareVAO();

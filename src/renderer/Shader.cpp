@@ -83,11 +83,9 @@ static TBuiltInResource getDefaultResources();
 static std::unique_ptr<glslang::TShader> compileShader(EShLanguage stage, const std::string& code, const std::string& name) {
     auto shader = std::make_unique<glslang::TShader>(stage);
 
-    std::string rawCode = "#define GLSL\n" + code;
-
-    const char* str   = rawCode.c_str();
+    const char* str   = code.c_str();
     const char* sname = name.c_str();
-    int length = rawCode.size();
+    int length = code.size();
 
     shader->setStringsWithLengthsAndNames(&str, &length, &sname, 1);
     shader->setEnvInput(glslang::EShSourceGlsl, stage, glslang::EShClientOpenGL, 450);
@@ -117,7 +115,7 @@ struct ShaderBinaries {
     std::vector<u32> fragmentShader;
 };
 
-static ShaderBinaries compileProgram(const fs::path& vertexPath, const fs::path& fragmentPath) {
+static ShaderBinaries compileProgram(const fs::path& vertexPath, const fs::path& fragmentPath, std::string preCode) {
     auto vertexSource   = readResourceFile(vertexPath);
     auto fragmentSource = readResourceFile(fragmentPath);
 
@@ -128,10 +126,10 @@ static ShaderBinaries compileProgram(const fs::path& vertexPath, const fs::path&
     if (!vertexSource || !fragmentSource)
         return { false };
 
-    auto vertexShader = compileShader(EShLangVertex, vertexSource.value(), vertexPath.string());
+    auto vertexShader = compileShader(EShLangVertex, preCode + vertexSource.value(), vertexPath.string());
     if (!vertexShader) return { false };
 
-    auto fragmentShader = compileShader(EShLangFragment, fragmentSource.value(), fragmentPath.string());
+    auto fragmentShader = compileShader(EShLangFragment, preCode + fragmentSource.value(), fragmentPath.string());
     if (!fragmentShader) return { false };
     
     auto program = std::make_unique<glslang::TProgram>();
@@ -252,8 +250,16 @@ static u32 createShader(i32 type, const std::vector<u32>& code) {
     return shader;
 }
 
-Shader* Shader::create(const fs::path& vertexPath, const fs::path& fragmentPath) {
-    auto binaries = compileProgram(vertexPath, fragmentPath);
+Shader* Shader::create(
+    const fs::path& vertexPath,
+    const fs::path& fragmentPath,
+    std::map<std::string, std::string> macroVariables
+) {
+    std::string preCode = "#define GLSL\n";
+    for (auto [k, v] : macroVariables)
+        preCode += "#define " + k + " " + v + "\n";
+
+    auto binaries = compileProgram(vertexPath, fragmentPath, preCode);
     if (!binaries.success)
         return nullptr;
     

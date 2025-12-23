@@ -2,6 +2,9 @@
 
 #include <common.hpp>
 
+#include <string>
+#include <map>
+
 struct ShaderSources {
     const char* vertexSource;
     const char* fragmentSource;
@@ -14,7 +17,11 @@ private:
 public:
     static Shader* create(const ShaderSources& sources);
 
-    static Shader* create(const fs::path& vertexPath, const fs::path& fragmentPath);
+    static Shader* create(
+        const fs::path& vertexPath,
+        const fs::path& fragmentPath,
+        std::map<std::string, std::string> macroVariables = {}
+    );
 
     static inline void destroy(Shader* shader) {
         delete shader;
