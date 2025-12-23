@@ -1,10 +1,16 @@
 #include "Renderer.hpp" 
 #include "ObjectSorter.hpp"
 
+using namespace cocos2d;
+
+static Renderer* currentRenderer;
+
 Renderer::~Renderer() { terminate(); }
 
 bool Renderer::init(PlayLayer* layer) {
     this->layer = layer;
+
+    log::info("OpenGL Version: {}", (const char*)glGetString(GL_VERSION));
 
     auto tcache = cocos2d::CCTextureCache::get();
     // TODO: Add text sheet
@@ -18,9 +24,21 @@ bool Renderer::init(PlayLayer* layer) {
     ObjectSorter sorter;
 
     sorter.initForGameLayer(layer);
-    CCObject* obj;
-    CCARRAY_FOREACH(layer->m_objects, obj) {
-        sorter.addGameObject((GameObject*)obj);
+    for (int x = 0; x < layer->m_sections.size(); x++) {
+        if (layer->m_sections[x] == nullptr)
+            continue;
+        for (int y = 0; y < layer->m_sections[x]->size(); y++) {
+            auto section = layer->m_sections[x]->at(y);
+
+            if (section == nullptr || layer->m_sectionSizes[x] == nullptr)
+                continue;
+
+            auto size = layer->m_sectionSizes[x]->at(y);
+            
+            for (int i = 0; i < size; i++) {
+                sorter.addGameObject(section->at(i));
+            }
+        }
     }
     sorter.finalizeSorting();
 
@@ -35,28 +53,39 @@ bool Renderer::init(PlayLayer* layer) {
     if (!shader)
         return false;
 
+    CCObject* obj;
     CCARRAY_FOREACH(layer->m_batchNodes, obj) {
         ((CCNode*)obj)->setVisible(false);
     }
 
-    log::info("OpenGL Version: {}", (const char*)glGetString(GL_VERSION));
+    drbBuffer = Buffer::createDynamicDraw(sizeof(DynamicRenderingBuffer));
+    if (!drbBuffer)
+        return false;
+
+    debugText = CCLabelBMFont::create("", "chatFont.fnt");
+
+    debugText->setAnchorPoint(CCPoint(0, 1));
+    debugText->setPosition(1, CCDirector::get()->getWinSize().height - 8);
+    debugText->setScale(0.5);
+    debugText->setVisible(false);
+    layer->addChild(debugText, 1000);
+
+    log::info("Renderer initialized");
     return true;
 }
 
 void Renderer::terminate() {
     if (shader)
         Shader::destroy(shader);
+    if (drbBuffer)
+        Buffer::destroy(drbBuffer);
     shader = nullptr;
+
+    currentRenderer = nullptr;
+    log::info("Renderer terminated");
 }
 
-void Renderer::draw() {
-    glBeginQuery(GL_TIME_ELAPSED, 50);
-
-    storeGLStates();
-
-    shader->use();
-    objectBatch.bind();
-
+void Renderer::prepareShaderUniforms() {
     kmMat4 matrixP;
 	kmMat4 matrixMV;
 	kmMat4 matrixMVP;
@@ -70,6 +99,7 @@ void Renderer::draw() {
 
     shader->setMatrix4("u_mvp", matrixMVP.mat);
 
+    /*
     i32 textureId = 0;
     for (i32 i = 0; i < (i32)SpriteSheet::COUNT; i++) {
         if (spriteSheets[i] == nullptr)
@@ -78,37 +108,97 @@ void Renderer::draw() {
         shader->setTexture(name.c_str(), textureId, spriteSheets[i]);
         textureId++;
     }
+    */
+   shader->setTextureArray("u_spriteSheets", (i32)SpriteSheet::COUNT, spriteSheets);
+}
 
-    glDrawElements(GL_TRIANGLES, objectBatch.indexCount(), GL_UNSIGNED_INT, 0);
+void Renderer::prepareDynamicRenderingBuffer() {
+    auto effectManager = layer->m_effectManager;
+
+    for (usize i = 0; i < effectManager->m_colorActionSpriteVector.size(); i++) {
+        auto sprite = effectManager->m_colorActionSpriteVector[i];
+        if (sprite == nullptr)
+            continue;
+
+        auto id = sprite->m_colorID;
+
+        drb.channelColors[id].r = sprite->m_color.r;
+        drb.channelColors[id].g = sprite->m_color.g;
+        drb.channelColors[id].b = sprite->m_color.b;
+        drb.channelColors[id].a = (u8)sprite->m_opacity;
+    }
+
+    drb.channelColors[COLOR_CHANNEL_BLACK] = { 0, 0, 0, 255 };
+
+    drbBuffer->write(&drb, sizeof(DynamicRenderingBuffer));
+    drbBuffer->bindAsUniformBuffer(DYNAMIC_RENDERING_BUFFER_BINDING);
+}
+
+void Renderer::draw() {
+    glBeginQuery(GL_TIME_ELAPSED, 50);
+
+    storeGLStates();
+
+    shader->use();
+
+    prepareShaderUniforms();
+    prepareDynamicRenderingBuffer();
+
+    objectBatch.draw();
 
     restoreGLStates();
     
-    i64 gpuTime = 0;
     glEndQuery(GL_TIME_ELAPSED);
-    glGetQueryObjecti64v(50, GL_QUERY_RESULT, &gpuTime);
+    glGetQueryObjecti64v(50, GL_QUERY_RESULT, &renderTime);
 
-    // log::info("Rendering time: {}ms", (float)(gpuTime) / 1000000.0);
+    if (debugText->isVisible())
+        updateDebugText();
+}
+
+static std::string byteSizeToString(usize size) {
+    std::string unit = "B";
+    double dsize = size;
+    if (dsize > 1000.0) { dsize /= 1000.0; unit = "kB"; }
+    if (dsize > 1000.0) { dsize /= 1000.0; unit = "MB"; }
+    return fmt::format("{:.3f}{}", dsize, unit);
+}
+
+void Renderer::updateDebugText() {
+    std::string text = "";
+
+    auto screenSize = CCDirector::get()->getWinSizeInPixels();
+
+    text += fmt::format("Bismuth {}\n", Mod::get()->getVersion().toVString());
+    text += fmt::format("OpenGL {}\n", (const char*)glGetString(GL_VERSION));
+    text += fmt::format("{}\n", (const char*)glGetString(GL_RENDERER));
+    text += fmt::format("Window: {}x{}\n", screenSize.width, screenSize.height);
+    text += fmt::format("Render time: {}ms\n", (double)renderTime / 1000000.0);
+    text += fmt::format("Vertex buffer size: {}\n", byteSizeToString(objectBatch.getQuadCount() * sizeof(ObjectQuad)));
+    text += "\n";
+    text += "Press F3 to hide this screen";
+
+    debugText->setString(text.c_str());
 }
 
 void Renderer::update(float dt) {
     auto parent = getParent();
 }
 
-static WeakRef<Renderer> currentRenderer;
-
 Ref<Renderer> Renderer::create(PlayLayer* layer) {
-    Ref<Renderer> ren = new Renderer();
-    if (ren && ren->init(layer))
+    auto ren = new Renderer;
+
+    if (ren->init(layer)) {
         ren->autorelease();
-    else
-        CC_SAFE_DELETE(ren);
+        currentRenderer = ren;
+        return ren;
+    }
     
-    currentRenderer = ren;
-    return ren;
+    delete ren;
+    return nullptr;
 }
 
 Ref<Renderer> Renderer::get() {
-    return currentRenderer.lock();
+    return currentRenderer;
 }
 
 #include <Geode/modify/PlayLayer.hpp>
@@ -123,11 +213,8 @@ class $modify(RendererPlayLayer, PlayLayer) {
         }
 
         auto renderer = Renderer::create(this);
-        if (!renderer)
-            return;
-        batchLayer->addChild(renderer);
-
-        return;
+        if (renderer)
+            batchLayer->addChild(renderer);
     }
 };
 
@@ -138,6 +225,16 @@ class $modify(RendererGJBaseGameLayer, GJBaseGameLayer) {
         auto renderer = Renderer::get();
         if (renderer)
             renderer->update(dt);
+    }
+};
+
+#include <Geode/modify/CCKeyboardDispatcher.hpp>
+class $modify(RendererCCKeyboardDispatcher, cocos2d::CCKeyboardDispatcher) {
+    bool dispatchKeyboardMSG(cocos2d::enumKeyCodes key, bool keyDown, bool isKeyRepeat) {
+        if (keyDown && key == cocos2d::KEY_F3 && !isKeyRepeat && Renderer::get())
+            Renderer::get()->toggleDebugText();
+
+        return cocos2d::CCKeyboardDispatcher::dispatchKeyboardMSG(key, keyDown, isKeyRepeat);
     }
 };
 

@@ -11,10 +11,10 @@ using namespace cocos2d;
 #define QUAD_TR 3
 
 ObjectBatch::~ObjectBatch() {
-    if (vbo)
-        glDeleteBuffers(1, &vbo);
-    if (ibo)
-        glDeleteBuffers(1, &ibo);
+    if (vertexBuffer)
+        Buffer::destroy(vertexBuffer);
+    if (indexBuffer)
+        Buffer::destroy(indexBuffer);
     if (vao)
         glDeleteVertexArrays(1, &vao);
 }
@@ -44,13 +44,12 @@ void ObjectBatch::allocateReservations() {
     currentQuadIndex = 0;
 }
 
-void ObjectBatch::writeQuad(
+ObjectQuad& ObjectBatch::writeQuad(
     CCAffineTransform absoluteNodeTransform,
     CCPoint innerVertexOffset,
     CCSize contentSize,
     cocos2d::CCRect textureCrop,
     bool textureCropRotated,
-    SpriteSheet sheet,
     bool flipX, bool flipY
 ) {
     auto& quad = quads[currentQuadIndex];
@@ -107,54 +106,8 @@ void ObjectBatch::writeQuad(
         quad.verticies[QUAD_TR].texCoord = glm::vec2(right, top);
     }
 
-    if (sheet != SpriteSheet::GAME_1)
-        log::info("{} {}", currentQuadIndex, (u32)sheet);
-
-    for (i32 i = 0; i < 4; i++) {
-        quad.verticies[i].spriteSheet = (u32)sheet;
-    }
-
     currentQuadIndex++;
-}
-
-void ObjectBatch::finishWriting() {
-    quadCount = currentQuadIndex;
-    
-    std::vector<u32> indicies;
-    indicies.resize(quadCount * 6);
-
-    log::info("offset: {}", offsetof(ObjectVertex, spriteSheet));
-
-    usize vertexIndex = 0;
-    for (usize i = 0; i < indicies.size(); i += 6) {
-        indicies[i + 0] = vertexIndex + QUAD_BL;
-        indicies[i + 1] = vertexIndex + QUAD_TL;
-        indicies[i + 2] = vertexIndex + QUAD_TR;
-        indicies[i + 3] = vertexIndex + QUAD_BL;
-        indicies[i + 4] = vertexIndex + QUAD_TR;
-        indicies[i + 5] = vertexIndex + QUAD_BR;
-        vertexIndex += 4;
-    }
-
-    storeGLStates();
-
-    if (vbo == 0)
-        glGenBuffers(1, &vbo);
-
-    if (ibo == 0)
-        glGenBuffers(1, &ibo);
-
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, quadCount * sizeof(ObjectQuad), quads.data(), GL_STATIC_DRAW);
-
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indicies.size() * sizeof(u32), indicies.data(), GL_STATIC_DRAW);
-
-    prepareVAO();
-
-    restoreGLStates();
-
-    quads.clear();
+    return quad;
 }
 
 void ObjectBatch::writeGameObjects(Ref<CCArray> objects) {
@@ -177,24 +130,30 @@ void ObjectBatch::writeGameObject(GameObject* object) {
 
     SpriteSheet sheet = (SpriteSheet)object->getParentMode();
 
-    writeSprite(object, transform, sheet);
+    writeSprite(object, transform, sheet, object->m_activeMainColorID, object->m_isObjectBlack);
 
     if (object->m_glowSprite) {
-        writeSprite(object->m_glowSprite, transform, SpriteSheet::GLOW);
+        writeSprite(object->m_glowSprite, transform, SpriteSheet::GLOW, object->m_activeMainColorID, object->m_isObjectBlack);
         
         if (object->m_glowSprite->getParent() == object)
             log::warn("Glow sprite of object is child of main sprite after setup");
     }
 
     if (object->m_hasColorSprite && object->m_colorSprite) {
-        writeSprite(object->m_colorSprite, transform, sheet);
+        writeSprite(object->m_colorSprite, transform, sheet, object->m_activeDetailColorID, object->m_isColorSpriteBlack);
         
         if (object->m_colorSprite->getParent() == object)
             log::warn("Color sprite of object is child of main sprite after setup");
     }
 }
 
-void ObjectBatch::writeSprite(CCSprite* sprite, CCAffineTransform transform, SpriteSheet sheet) {
+void ObjectBatch::writeSprite(
+    cocos2d::CCSprite* sprite,
+    cocos2d::CCAffineTransform transform,
+    SpriteSheet sheet,
+    u32 colorChannel,
+    bool isBlack
+) {
     CCTexture2D* texture = renderer->getSpriteSheetTexture(sheet);
     
     transform = CCAffineTransformConcat(sprite->nodeToParentTransform(), transform);
@@ -227,22 +186,73 @@ void ObjectBatch::writeSprite(CCSprite* sprite, CCAffineTransform transform, Spr
         crop.size.width  *= contentScale / texWidth;
         crop.size.height *= contentScale / texHeight;
 
-        writeQuad(
+        auto& quad = writeQuad(
             transform,
             sprite->getOffsetPosition(),
             size,
             crop,
             sprite->isTextureRectRotated(),
-            sheet,
             sprite->isFlipX(),
             sprite->isFlipY()
         );
+
+        for (i32 i = 0; i < 4; i++) {
+            auto& vertex = quad.verticies[i];
+            vertex.spriteSheet  = (u32)sheet;
+            vertex.colorChannel = isBlack ? COLOR_CHANNEL_BLACK : colorChannel;
+        }
     }
 
     CCObject* child;
     CCARRAY_FOREACH(sprite->getChildren(), child) {
-        writeSprite((CCSprite*)child, transform, sheet);
+        writeSprite((CCSprite*)child, transform, sheet, colorChannel, false);
     }
+}
+
+void ObjectBatch::finishWriting() {
+    quadCount = currentQuadIndex;
+    
+    std::vector<u32> indicies;
+    indicies.resize(quadCount * 6);
+
+    log::info("offset: {}", offsetof(ObjectVertex, spriteSheet));
+
+    usize vertexIndex = 0;
+    for (usize i = 0; i < indicies.size(); i += 6) {
+        indicies[i + 0] = vertexIndex + QUAD_BL;
+        indicies[i + 1] = vertexIndex + QUAD_TL;
+        indicies[i + 2] = vertexIndex + QUAD_TR;
+        indicies[i + 3] = vertexIndex + QUAD_BL;
+        indicies[i + 4] = vertexIndex + QUAD_TR;
+        indicies[i + 5] = vertexIndex + QUAD_BR;
+        vertexIndex += 4;
+    }
+
+    storeGLStates();
+
+    if (vertexBuffer) {
+        Buffer::destroy(vertexBuffer);
+        vertexBuffer = nullptr;
+    }
+
+    if (indexBuffer) {
+        Buffer::destroy(indexBuffer);
+        indexBuffer = nullptr;
+    }
+
+    vertexBuffer = Buffer::createStaticDraw(quads.data(),    quadCount * sizeof(ObjectQuad));
+    indexBuffer  = Buffer::createStaticDraw(indicies.data(), indicies.size() * sizeof(u32));
+
+    prepareVAO();
+
+    restoreGLStates();
+
+    quads.clear();
+}
+
+void ObjectBatch::draw() {
+    bind();
+    glDrawElements(GL_TRIANGLES, indexCount(), GL_UNSIGNED_INT, nullptr);
 }
 
 struct AttribTypeInfo {
@@ -252,11 +262,19 @@ struct AttribTypeInfo {
 };
 
 static AttribTypeInfo getInfoOfAttributeTypeString(std::string type) {
-    if (type == "float")     return { GL_FLOAT, 1, sizeof(float) * 1 };
-    if (type == "glm::vec2") return { GL_FLOAT, 2, sizeof(float) * 2 };
-    if (type == "glm::vec3") return { GL_FLOAT, 3, sizeof(float) * 3 };
-    if (type == "glm::vec4") return { GL_FLOAT, 4, sizeof(float) * 4 };
-    if (type == "int")       return { GL_INT,   1, sizeof(int) * 1 };
+    if (type == "float") return { GL_FLOAT, 1, sizeof(float) * 1 };
+    if (type == "vec2")  return { GL_FLOAT, 2, sizeof(float) * 2 };
+    if (type == "vec3")  return { GL_FLOAT, 3, sizeof(float) * 3 };
+    if (type == "vec4")  return { GL_FLOAT, 4, sizeof(float) * 4 };
+
+    if (type == "i8")                   return { GL_BYTE,  1, sizeof(i8)  };
+    if (type == "i16")                  return { GL_SHORT, 1, sizeof(i16) };
+    if (type == "int" || type == "i32") return { GL_INT,   1, sizeof(i32) };
+
+    if (type == "u8")  return { GL_UNSIGNED_BYTE,  1, sizeof(u8)  };
+    if (type == "u16") return { GL_UNSIGNED_SHORT, 1, sizeof(u16) };
+    if (type == "u32") return { GL_UNSIGNED_INT,   1, sizeof(u32) };
+    
     return { 0, 0 };
 }
 
@@ -272,9 +290,8 @@ static void vertexAttribPointer(u32 id, const AttribTypeInfo& info, usize stride
 #define VERTEX_ATTRIBUTE_AS_ATTRIB_POINTER_CALL(ID, TYPE, NAME) \
     { \
         auto info = getInfoOfAttributeTypeString(#TYPE); \
-        vertexAttribPointer(ID, info, sizeof(ObjectVertex), offset); \
+        vertexAttribPointer(ID, info, sizeof(ObjectVertex), offsetof(ObjectVertex, NAME)); \
         glEnableVertexAttribArray(ID); \
-        offset += info.size; \
     }
 
 void ObjectBatch::prepareVAO() {
@@ -282,8 +299,7 @@ void ObjectBatch::prepareVAO() {
         glGenVertexArrays(1, &vao);
 
     glBindVertexArray(vao);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    vertexBuffer->bindAs(GL_ARRAY_BUFFER);
 
-    usize offset = 0;
     OBJECT_VERTEX_ATTRIBUTES(VERTEX_ATTRIBUTE_AS_ATTRIB_POINTER_CALL)
 }

@@ -2,8 +2,9 @@
 
 #include <common.hpp>
 #include <Geode/Geode.hpp>
-
 #include <vector>
+
+#include "Buffer.hpp"
 
 using namespace geode;
 
@@ -16,9 +17,10 @@ using namespace geode;
     ATTRIB(attributeId, type, name)
 */
 #define OBJECT_VERTEX_ATTRIBUTES(ATTRIB) \
-    ATTRIB(0, glm::vec2, position) \
-    ATTRIB(1, glm::vec2, texCoord) \
-    ATTRIB(2, int,       spriteSheet)
+    ATTRIB(0, vec2, position) \
+    ATTRIB(1, vec2, texCoord) \
+    ATTRIB(2, u16,  colorChannel) \
+    ATTRIB(3, u8,   spriteSheet)
 
 ////////////////////////////////////////////////
 
@@ -62,33 +64,44 @@ public:
     void allocateReservations();
 
     // textureCrop values go from 0.0 to 1.0 instead of to the size of the texture
-    void writeQuad(
+    ObjectQuad& writeQuad(
         cocos2d::CCAffineTransform absoluteNodeTransform,
         cocos2d::CCPoint innerVertexOffset,
         cocos2d::CCSize contentSize,
         cocos2d::CCRect textureCrop,
         bool textureCropRotated,
-        SpriteSheet sheet,
         bool flipX, bool flipY
     );
-
-    void finishWriting();
 
     void writeGameObjects(Ref<cocos2d::CCArray> objects);
 
     void writeGameObject(GameObject* object);
 
+    void finishWriting();
+
     inline void bind() {
         glBindVertexArray(vao);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
+        indexBuffer->bindAs(GL_ELEMENT_ARRAY_BUFFER);
     }
 
     inline u32 indexCount() {
         return quadCount * 6;
     }
 
+    inline usize getQuadCount() {
+        return quadCount;
+    }
+
+    void draw();
+
 private:
-    void writeSprite(cocos2d::CCSprite* sprite, cocos2d::CCAffineTransform transform, SpriteSheet sheet);
+    void writeSprite(
+        cocos2d::CCSprite* sprite,
+        cocos2d::CCAffineTransform transform,
+        SpriteSheet sheet,
+        u32 colorChannel,
+        bool isBlack
+    );
 
     void prepareVAO();
 
@@ -101,8 +114,8 @@ private:
     std::vector<ObjectQuad> quads;
     usize currentQuadIndex = 0;
 
-    u32 vbo = 0;
-    u32 ibo = 0;
+    Buffer* vertexBuffer = nullptr;
+    Buffer* indexBuffer = nullptr;
     u32 vao = 0;
     u32 quadCount = 0;
 };

@@ -25,18 +25,25 @@ file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS src/*.cpp)
 # Set up the mod binary
 add_library(${PROJECT_NAME} SHARED ${SOURCES})
 
-# Libraries
-include(FetchContent)
+# Not sure about this...............
+set(CMAKE_BUILD_TYPE Release)
 
+# glm
+include(FetchContent)
 FetchContent_Declare(
 	glm
 	GIT_REPOSITORY	https://github.com/g-truc/glm.git
 	GIT_TAG 	0af55ccecd98d4e5a8d1fad7de25ba429d60e863
 )
-
 FetchContent_MakeAvailable(glm)
 
-target_link_libraries(${PROJECT_NAME} glm::glm)
+
+# glslang
+set(ENABLE_OPT 0)
+set(ENABLE_GLSLANG_BINARIES OFF)
+add_subdirectory(dep/glslang)
+
+target_link_libraries(${PROJECT_NAME} glm::glm glslang::glslang)
 target_include_directories(${PROJECT_NAME} PRIVATE src)
 
 # Other Geode stuff

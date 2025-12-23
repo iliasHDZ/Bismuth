@@ -13,6 +13,8 @@
 #include <Geode/modify/LevelEditorLayer.hpp>
 #include <Geode/modify/CCSprite.hpp>
 
+#include "renderer/Renderer.hpp"
+
 bool takeSnapshotNextFrame = false;
 bool isTakingSnapshot      = false;
 
@@ -52,9 +54,7 @@ class $modify(MyCCDisplayLinkDirector, cocos2d::CCDisplayLinkDirector) {
             processTime = getTime();
         }
 
-        
         CCDisplayLinkDirector::mainLoop();
-        
         
         if (isTakingSnapshot) {
             isTakingSnapshot = false;

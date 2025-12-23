@@ -23,8 +23,6 @@ class $modify(MyGJBaseGameLayer, GJBaseGameLayer) {
                 continue;
             */
 
-            const char* a = ""_spr;
-
             if (!object->m_isDecoration2 && object->m_unk4C4 != m_gameState.m_unkUint2) {
                 object->m_unk4C4 = m_gameState.m_unkUint2;
 
@@ -51,9 +49,37 @@ class $modify(MyGJBaseGameLayer, GJBaseGameLayer) {
     }
 };
 
+/*
+int* a = nullptr;
+PlayLayer* pl = nullptr;
+
+#include <Geode/modify/GameObject.hpp>
+class $modify(MyGameObject, GameObject) {
+    void activateObject() {
+        GameObject::activateObject();
+
+        for (int i = 0; i < pl->m_activeObjectsCount; i++)
+            if (pl->m_activeObjects[i] == this)
+                return;
+        
+        *a = 6;
+    }
+};
+
+#include <Geode/modify/PlayLayer.hpp>
+class $modify(MyPlayLayer, PlayLayer) {
+    bool init(GJGameLevel* level, bool useReplay, bool dontCreateObjects) {
+        pl = this;
+
+        if (!PlayLayer::init(level, useReplay, dontCreateObjects))
+            return false;
+
+        return true;
+    }
+};
+
 int i = 0;
 
-/*
 cocos2d::CCLabelBMFont* thing = nullptr;
 
 PlayLayer* pl = nullptr;

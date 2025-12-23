@@ -43,6 +43,11 @@ public:
         setTexture(location(name), id, texture);
     }
 
+    void setTextureArray(u32 location, i32 count, cocos2d::CCTexture2D** textures);
+    inline void setTextureArray(const char* name, i32 count, cocos2d::CCTexture2D** textures) {
+        setTextureArray(location(name), count, textures);
+    }
+
 private:
     u32 program = 0;
 };
