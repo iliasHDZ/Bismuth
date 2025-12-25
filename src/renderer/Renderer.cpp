@@ -131,6 +131,16 @@ void Renderer::prepareDynamicRenderingBuffer() {
         drb.channelColors[id].g = sprite->m_color.g;
         drb.channelColors[id].b = sprite->m_color.b;
         drb.channelColors[id].a = (u8)sprite->m_opacity;
+
+        bool shouldBlending = layer->shouldBlend(id);
+
+        if (shouldBlending)
+            log::info("{} BLENDING", id);
+
+        if (shouldBlending)
+            drb.colorChannelBlendingBitmap[id >> 5] |= 1 << (id & 0x1f);
+        else
+            drb.colorChannelBlendingBitmap[id >> 5] &= ~(1 << (id & 0x1f));
     }
 
     drb.channelColors[COLOR_CHANNEL_BLACK] = { 0, 0, 0, 255 };
@@ -148,6 +158,8 @@ void Renderer::draw() {
 
     prepareShaderUniforms();
     prepareDynamicRenderingBuffer();
+
+    glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
     objectBatch.draw();
 

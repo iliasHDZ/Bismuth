@@ -3,6 +3,8 @@
 #include "decomp/PlayLayer.hpp"
 #include "decomp/GJBaseGameLayer.hpp"
 
+using namespace geode::prelude;
+
 #include <Geode/modify/GJBaseGameLayer.hpp>
 class $modify(MyGJBaseGameLayer, GJBaseGameLayer) {
     void moveObjects(cocos2d::CCArray* objects, double moveX, double moveY, bool unused) {
@@ -50,6 +52,25 @@ class $modify(MyGJBaseGameLayer, GJBaseGameLayer) {
 };
 
 /*
+#include <Geode/modify/PlayLayer.hpp>
+class $modify(MyPlayLayer, PlayLayer) {
+    void updateVisibility(float dt) {
+        ((decomp_PlayLayer*)this)->virtual_updateVisibility(dt);
+    }
+};
+
+static int* a = nullptr;
+
+#include <Geode/modify/GameObject.hpp>
+class $modify(MyGameObject, GameObject) {
+    void setOpacity(unsigned char op) {
+        if (m_objectID == 669)
+            a = 0;
+
+        GameObject::setOpacity(op);
+    }
+};
+
 int* a = nullptr;
 PlayLayer* pl = nullptr;
 

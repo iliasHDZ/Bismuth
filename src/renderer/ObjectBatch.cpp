@@ -3,12 +3,15 @@
 
 #include <string>
 
-using namespace cocos2d;
+using namespace geode::prelude;
 
 #define QUAD_BL 0
 #define QUAD_BR 1
 #define QUAD_TL 2
 #define QUAD_TR 3
+
+//#define DEBUG_LOG(...) log::info(__VA_ARGS__)
+#define DEBUG_LOG(...)
 
 ObjectBatch::~ObjectBatch() {
     if (vertexBuffer)
@@ -35,7 +38,7 @@ void ObjectBatch::reserveForGameObject(GameObject* object) {
 
     if (object->m_glowSprite)
         reservedQuadCount += countSelfAndDesendantsIfDraw(object->m_glowSprite);
-    if (object->m_hasColorSprite && object->m_colorSprite)
+    if (object->m_colorSprite && object->m_colorSprite->getParent() != object)
         reservedQuadCount += countSelfAndDesendantsIfDraw(object->m_colorSprite);
 }
 
@@ -44,28 +47,55 @@ void ObjectBatch::allocateReservations() {
     currentQuadIndex = 0;
 }
 
-ObjectQuad& ObjectBatch::writeQuad(
-    CCAffineTransform absoluteNodeTransform,
-    CCPoint innerVertexOffset,
-    CCSize contentSize,
-    cocos2d::CCRect textureCrop,
-    bool textureCropRotated,
-    bool flipX, bool flipY
-) {
+ObjectQuad* ObjectBatch::writeQuad(
+    cocos2d::CCSprite* sprite,
+    const cocos2d::CCAffineTransform& transform,
+    SpriteSheet spriteSheet
+) {     
+    CCTexture2D* texture = renderer->getSpriteSheetTexture(spriteSheet);
+    if (texture == nullptr)
+        return nullptr;
+
+    CCPoint relativeOffset = sprite->getUnflippedOffsetPosition();
+
+    if (sprite->isFlipX())
+        relativeOffset.x = -relativeOffset.x;
+    if (sprite->isFlipY())
+        relativeOffset.y = -relativeOffset.y;
+
+    CCRect crop = sprite->getTextureRect();
+    CCSize size = crop.size;
+
+    if (sprite->isTextureRectRotated()) {
+        float temp = crop.size.height;
+        crop.size.height = crop.size.width;
+        crop.size.width  = temp;
+    }
+
+    float contentScale = CCDirector::get()->getContentScaleFactor();
+
+    u32 texWidth  = texture->getPixelsWide();
+    u32 texHeight = texture->getPixelsHigh();
+
+    crop.origin.x    *= contentScale / texWidth;
+    crop.origin.y    *= contentScale / texHeight;
+    crop.size.width  *= contentScale / texWidth;
+    crop.size.height *= contentScale / texHeight;
+
     auto& quad = quads[currentQuadIndex];
     
-    float x1 = innerVertexOffset.x;
-    float y1 = innerVertexOffset.y;
+    float x1 = sprite->getOffsetPosition().x;
+    float y1 = sprite->getOffsetPosition().y;
 
-    float x2 = x1 + contentSize.width;
-    float y2 = y1 + contentSize.height;
-    float x = absoluteNodeTransform.tx;
-    float y = absoluteNodeTransform.ty;
+    float x2 = x1 + size.width;
+    float y2 = y1 + size.height;
+    float x = transform.tx;
+    float y = transform.ty;
 
-    float cr  =  absoluteNodeTransform.a;
-    float sr  =  absoluteNodeTransform.b;
-    float cr2 =  absoluteNodeTransform.d;
-    float sr2 = -absoluteNodeTransform.c;
+    float cr  =  transform.a;
+    float sr  =  transform.b;
+    float cr2 =  transform.d;
+    float sr2 = -transform.c;
     float ax = x1 * cr - y1 * sr2 + x;
     float ay = x1 * sr + y1 * cr2 + y;
 
@@ -83,22 +113,22 @@ ObjectQuad& ObjectBatch::writeQuad(
     quad.verticies[QUAD_TL].position = glm::vec2(dx, dy);
     quad.verticies[QUAD_TR].position = glm::vec2(cx, cy);
 
-    float left   = textureCrop.origin.x;
-    float right  = textureCrop.origin.x + textureCrop.size.width;
-    float top    = textureCrop.origin.y;
-    float bottom = textureCrop.origin.y + textureCrop.size.height;
+    float left   = crop.origin.x;
+    float right  = crop.origin.x + crop.size.width;
+    float top    = crop.origin.y;
+    float bottom = crop.origin.y + crop.size.height;
 
-    if (textureCropRotated) {
-        if (flipX) std::swap(top, bottom);
-        if (flipY) std::swap(left, right);
+    if (sprite->isTextureRectRotated()) {
+        if (sprite->isFlipX()) std::swap(top, bottom);
+        if (sprite->isFlipY()) std::swap(left, right);
 
         quad.verticies[QUAD_BL].texCoord = glm::vec2(left,  top);
         quad.verticies[QUAD_BR].texCoord = glm::vec2(left,  bottom);
         quad.verticies[QUAD_TL].texCoord = glm::vec2(right, top);
         quad.verticies[QUAD_TR].texCoord = glm::vec2(right, bottom);
     } else {
-        if (flipX) std::swap(left, right);
-        if (flipY) std::swap(top, bottom);
+        if (sprite->isFlipX()) std::swap(left, right);
+        if (sprite->isFlipY()) std::swap(top, bottom);
 
         quad.verticies[QUAD_BL].texCoord = glm::vec2(left,  bottom);
         quad.verticies[QUAD_BR].texCoord = glm::vec2(right, bottom);
@@ -107,7 +137,7 @@ ObjectQuad& ObjectBatch::writeQuad(
     }
 
     currentQuadIndex++;
-    return quad;
+    return &quad;
 }
 
 void ObjectBatch::writeGameObjects(Ref<CCArray> objects) {
@@ -130,106 +160,80 @@ void ObjectBatch::writeGameObject(GameObject* object) {
 
     SpriteSheet sheet = (SpriteSheet)object->getParentMode();
 
-    /*
-    log::info("OBJECT {}", (void*)object);
-    log::info("- isObjectBlack: {}", object->m_isObjectBlack);
-    log::info("- isColorSpriteBlack: {}", object->m_isColorSpriteBlack);
-    log::info("- hasColorSprite: {}", object->m_hasColorSprite);
-    log::info("- hasCustomChild: {}", object->m_hasCustomChild);
+    DEBUG_LOG("OBJECT {}", (void*)object);
+    DEBUG_LOG("- isObjectBlack: {}", object->m_isObjectBlack);
+    DEBUG_LOG("- isColorSpriteBlack: {}", object->m_isColorSpriteBlack);
+    DEBUG_LOG("- hasColorSprite: {}", object->m_hasColorSprite);
+    DEBUG_LOG("- colorSprite: {}", (void*)object->m_colorSprite);
+    DEBUG_LOG("- activeMainColorID: {}", object->m_activeMainColorID);
+    DEBUG_LOG("- activeDetailColorID: {}", object->m_activeDetailColorID);
+    DEBUG_LOG("- opacityMod2: {}", object->m_opacityMod2);
+    DEBUG_LOG("- sprites:");
 
-    log::info("- mainSprite:");
-    */
-    writeSprite(object, transform, sheet, object->m_activeMainColorID, object->m_isObjectBlack, object->m_isColorSpriteBlack, object->m_colorSprite);
+    writeSprite(object, object, transform);
 
+    // transform = CCAffineTransformConcat(transform, object->nodeToParentTransform());
 
-    if (object->m_glowSprite) {
-        // log::info("- glowSprite:");
-        writeSprite(object->m_glowSprite, transform, SpriteSheet::GLOW, object->m_activeMainColorID, object->m_isObjectBlack, false);
-        
-        if (object->m_glowSprite->getParent() == object)
-            log::warn("Glow sprite of object is child of main sprite after setup");
+    if (object->m_glowSprite && object->m_glowSprite->getParent() != object)
+        writeSprite(object, object->m_glowSprite, transform);
+
+    if (object->m_colorSprite && object->m_colorSprite->getParent() != object)
+        writeSprite(object, object->m_colorSprite, transform);
+}
+
+static std::string spriteTypeToString(ObjectBatch::SpriteType type) {
+    switch (type) {
+    case ObjectBatch::SpriteType::MAIN:  return "MAIN ";
+    case ObjectBatch::SpriteType::COLOR: return "COLOR";
+    case ObjectBatch::SpriteType::GLOW:  return "GLOW ";
     }
-
-    if (object->m_hasColorSprite && object->m_colorSprite) {
-        // log::info("- colorSprite:");
-        writeSprite(object->m_colorSprite, transform, sheet, object->m_activeDetailColorID, object->m_isColorSpriteBlack, object->m_isColorSpriteBlack);
-        
-        if (object->m_colorSprite->getParent() == object)
-            log::warn("Color sprite of object is child of main sprite after setup");
-    }
+    return "<invalid>";
 }
 
 void ObjectBatch::writeSprite(
+    GameObject* object,
     cocos2d::CCSprite* sprite,
     cocos2d::CCAffineTransform transform,
-    SpriteSheet sheet,
-    u32 colorChannel,
-    bool isBlack,
-    bool isChildrenBlack,
-    cocos2d::CCSprite* childToIgnore
+    SpriteType type
 ) {
-    CCTexture2D* texture = renderer->getSpriteSheetTexture(sheet);
-    
     transform = CCAffineTransformConcat(sprite->nodeToParentTransform(), transform);
 
-    CCObject* child;
-    CCARRAY_FOREACH(sprite->getChildren(), child) {
-        auto sprite = (CCSprite*)child;
-        if (sprite->getZOrder() < 0 && sprite != childToIgnore)
-            writeSprite(sprite, transform, sheet, colorChannel, isChildrenBlack, isChildrenBlack, childToIgnore);
+    if (sprite == object->m_colorSprite) type = SpriteType::COLOR;
+    if (sprite == object->m_glowSprite)  type = SpriteType::GLOW;
+
+    for (auto child : CCArrayExt<CCSprite*>(sprite->getChildren())) {
+        if (child->getZOrder() < 0)
+            writeSprite(object, child, transform, type);
     }
     
-    if (texture && !sprite->getDontDraw()) {
-        CCPoint relativeOffset = sprite->getUnflippedOffsetPosition();
+    if (!sprite->getDontDraw()) {
+        SpriteSheet sheet = type != SpriteType::GLOW ? (SpriteSheet)object->getParentMode() : SpriteSheet::GLOW;
 
-        if (sprite->isFlipX())
-            relativeOffset.x = -relativeOffset.x;
-        if (sprite->isFlipY())
-            relativeOffset.y = -relativeOffset.y;
+        u32 colorChannel = type == SpriteType::MAIN ? object->m_activeMainColorID : object->m_activeDetailColorID;
 
-        u32 texWidth  = texture->getPixelsWide();
-        u32 texHeight = texture->getPixelsHigh();
+        bool isSpriteBlack = (sprite == object) ? object->m_isObjectBlack : object->m_isColorSpriteBlack;
+        if (isSpriteBlack)
+            colorChannel = COLOR_CHANNEL_BLACK;
 
-        CCRect crop = sprite->getTextureRect();
+        DEBUG_LOG("  - {} {}SPRITE {}", spriteTypeToString(type), isSpriteBlack ? "BLACK " : "", (void*)sprite);
 
-        CCSize size = crop.size;
+        DEBUG_LOG("    {:.2f}, {:.2f}, {:.2f}", transform.a, transform.c, transform.tx);
+        DEBUG_LOG("    {:.2f}, {:.2f}, {:.2f}", transform.b, transform.d, transform.ty);
 
-        if (sprite->isTextureRectRotated()) {
-            float temp = crop.size.height;
-            crop.size.height = crop.size.width;
-            crop.size.width  = temp;
-        }
-
-        float contentScale = CCDirector::get()->getContentScaleFactor();
-
-        crop.origin.x    *= contentScale / texWidth;
-        crop.origin.y    *= contentScale / texHeight;
-        crop.size.width  *= contentScale / texWidth;
-        crop.size.height *= contentScale / texHeight;
-
-        // log::info("  - {}SPRITE", isBlack ? "BLACK " : "");
-
-        auto& quad = writeQuad(
-            transform,
-            sprite->getOffsetPosition(),
-            size,
-            crop,
-            sprite->isTextureRectRotated(),
-            sprite->isFlipX(),
-            sprite->isFlipY()
-        );
-
-        for (i32 i = 0; i < 4; i++) {
-            auto& vertex = quad.verticies[i];
-            vertex.spriteSheet  = (u32)sheet;
-            vertex.colorChannel = isBlack ? COLOR_CHANNEL_BLACK : colorChannel;
+        auto quad = writeQuad(sprite, transform, sheet);
+        if (quad) {
+            for (i32 i = 0; i < 4; i++) {
+                auto& vertex = quad->verticies[i];
+                vertex.spriteSheet  = (u32)sheet;
+                vertex.colorChannel = colorChannel;
+                vertex.opacity      = (object->m_opacityMod2 > 0.0) ? (u8)(object->m_opacityMod2 * 255.0) : 255;
+            }
         }
     }
 
-    CCARRAY_FOREACH(sprite->getChildren(), child) {
-        auto sprite = (CCSprite*)child;
-        if (sprite->getZOrder() >= 0 && sprite != childToIgnore)
-            writeSprite(sprite, transform, sheet, colorChannel, isChildrenBlack, isChildrenBlack, childToIgnore);
+    for (auto child : CCArrayExt<CCSprite*>(sprite->getChildren())) {
+        if (child->getZOrder() >= 0)
+            writeSprite(object, child, transform, type);
     }
 }
 
@@ -238,8 +242,6 @@ void ObjectBatch::finishWriting() {
     
     std::vector<u32> indicies;
     indicies.resize(quadCount * 6);
-
-    log::info("offset: {}", offsetof(ObjectVertex, spriteSheet));
 
     usize vertexIndex = 0;
     for (usize i = 0; i < indicies.size(); i += 6) {

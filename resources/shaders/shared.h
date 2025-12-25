@@ -70,6 +70,11 @@ struct GroupState {
 */
 struct DynamicRenderingBuffer {
     RGBA channelColors[COLOR_CHANNEL_COUNT];
+    /*
+        Bitmap for whether the color channels
+        have blending enabled.
+    */
+    uint colorChannelBlendingBitmap[COLOR_CHANNEL_COUNT / 32 + 1];
 
     GroupState groupStates[TOTAL_GROUP_COUNT];
 };

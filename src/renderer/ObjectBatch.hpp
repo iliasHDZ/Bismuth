@@ -20,7 +20,8 @@ using namespace geode;
     ATTRIB(0, vec2, position) \
     ATTRIB(1, vec2, texCoord) \
     ATTRIB(2, u16,  colorChannel) \
-    ATTRIB(3, u8,   spriteSheet)
+    ATTRIB(3, u8,   spriteSheet) \
+    ATTRIB(4, u8,   opacity)
 
 ////////////////////////////////////////////////
 
@@ -63,14 +64,10 @@ public:
 
     void allocateReservations();
 
-    // textureCrop values go from 0.0 to 1.0 instead of to the size of the texture
-    ObjectQuad& writeQuad(
-        cocos2d::CCAffineTransform absoluteNodeTransform,
-        cocos2d::CCPoint innerVertexOffset,
-        cocos2d::CCSize contentSize,
-        cocos2d::CCRect textureCrop,
-        bool textureCropRotated,
-        bool flipX, bool flipY
+    ObjectQuad* writeQuad(
+        cocos2d::CCSprite* sprite,
+        const cocos2d::CCAffineTransform& transform,
+        SpriteSheet spriteSheet
     );
 
     void writeGameObjects(Ref<cocos2d::CCArray> objects);
@@ -94,15 +91,20 @@ public:
 
     void draw();
 
+public:
+    enum class SpriteType {
+        MAIN,
+        COLOR,
+        GLOW
+    };
+
 private:
+
     void writeSprite(
+        GameObject* object,
         cocos2d::CCSprite* sprite,
         cocos2d::CCAffineTransform transform,
-        SpriteSheet sheet,
-        u32 colorChannel,
-        bool isBlack,
-        bool isChildrenBlack,
-        cocos2d::CCSprite* childToIgnore = nullptr
+        SpriteType type = SpriteType::MAIN
     );
 
     void prepareVAO();
