@@ -15,7 +15,12 @@ private:
     ~Shader();
 
 public:
-    static Shader* create(const ShaderSources& sources);
+    static Shader* createOld(const ShaderSources& sources);
+    
+    static Shader* createOld(
+        const fs::path& vertexPath,
+        const fs::path& fragmentPath
+    );
 
     static Shader* create(
         const fs::path& vertexPath,
@@ -45,11 +50,20 @@ public:
         setInt(location(name), value);
     }
 
-    void setTexture(u32 location, i32 id, cocos2d::CCTexture2D* texture);
+    void setFloat(u32 location, float value);
+    inline void setFloat(const char* name, float value) {
+        setFloat(location(name), value);
+    }
+
+    void setTexture(u32 location, i32 id, u32 texture);
+    inline void setTexture(u32 location, i32 id, cocos2d::CCTexture2D* texture) {
+        setTexture(location, id, texture->getName());
+    }
     inline void setTexture(const char* name, i32 id, cocos2d::CCTexture2D* texture) {
         setTexture(location(name), id, texture);
     }
 
+    void setTextureArray(u32 location, i32 count, u32* textures);
     void setTextureArray(u32 location, i32 count, cocos2d::CCTexture2D** textures);
     inline void setTextureArray(const char* name, i32 count, cocos2d::CCTexture2D** textures) {
         setTextureArray(location(name), count, textures);

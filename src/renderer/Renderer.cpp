@@ -1,7 +1,9 @@
-#include "Renderer.hpp" 
-#include "ObjectSorter.hpp"
+#include "Renderer.hpp"
+#include "Geode/cocos/platform/win32/CCGL.h"
+#include "ccTypes.h"
+#include <Geode/binding/RingObject.hpp>
 
-using namespace cocos2d;
+using namespace geode::prelude;
 
 static Renderer* currentRenderer;
 
@@ -24,6 +26,7 @@ bool Renderer::init(PlayLayer* layer) {
     ObjectSorter sorter;
 
     sorter.initForGameLayer(layer);
+    /*
     for (int x = 0; x < layer->m_sections.size(); x++) {
         if (layer->m_sections[x] == nullptr)
             continue;
@@ -36,14 +39,45 @@ bool Renderer::init(PlayLayer* layer) {
             auto size = layer->m_sectionSizes[x]->at(y);
             
             for (int i = 0; i < size; i++) {
-                sorter.addGameObject(section->at(i));
+                auto object = section->at(i);
+                if (object == layer->m_anticheatSpike)
+                    continue;
+
+                sorter.addGameObject(object);
             }
         }
     }
+    */
+    log::info("Level contains {} object(s):", layer->m_objects->count());
+    for (auto object : CCArrayExt<GameObject*>(layer->m_objects)) {
+        if (object == layer->m_anticheatSpike) {
+            DEBUG_LOG("- anti-cheat spike");
+            continue;
+        }
+
+        DEBUG_LOG("- {}, id: {}", (void*)object, object->m_objectID);
+        DEBUG_LOG("  - zlayer: {}", (i32)object->getObjectZLayer());
+        DEBUG_LOG("  - blending: {}", object->m_baseOrDetailBlending);
+        DEBUG_LOG("  - spritesheet: {}", object->getParentMode());
+        DEBUG_LOG("  - usesAudioScale: {}", object->m_usesAudioScale);
+        DEBUG_LOG("  - customAudioScale: {}", object->m_customAudioScale);
+        DEBUG_LOG("  - maxAudioScale: {}", object->m_maxAudioScale);
+        DEBUG_LOG("  - minAudioScale: {}", object->m_minAudioScale);
+        if (object->getHasRotateAction())
+            DEBUG_LOG("  - rotationDelta: {}", ((EnhancedGameObject*)object)->m_rotationDelta);
+
+        sorter.addGameObject(object);
+    }
     sorter.finalizeSorting();
 
-    for (auto it = sorter.iterator(); !it.isEnd(); it.next())
+    renderedGameObjectCount = 0;
+    for (auto it = sorter.iterator(); !it.isEnd(); it.next()){
+        renderedGameObjectCount++;
         objectBatch.reserveForGameObject(it.get());
+    }
+
+    generateStaticRenderingBuffer(sorter);
+
     objectBatch.allocateReservations();
     for (auto it = sorter.iterator(); !it.isEnd(); it.next())
         objectBatch.writeGameObject(it.get());
@@ -51,17 +85,12 @@ bool Renderer::init(PlayLayer* layer) {
 
     std::map<std::string, std::string> shaderMacroVariables;
 
-    shaderMacroVariables["TOTAL_OBJECT_COUNT"] = "1";
+    shaderMacroVariables["TOTAL_OBJECT_COUNT"] = std::to_string(renderedGameObjectCount == 0 ? 1 : renderedGameObjectCount);
     shaderMacroVariables["TOTAL_GROUP_COUNT"]  = "1";
 
     shader = Shader::create("object.vert", "object.frag", shaderMacroVariables);
     if (!shader)
         return false;
-
-    CCObject* obj;
-    CCARRAY_FOREACH(layer->m_batchNodes, obj) {
-        ((CCNode*)obj)->setVisible(false);
-    }
 
     drbBuffer = Buffer::createDynamicDraw(sizeof(DynamicRenderingBuffer));
     if (!drbBuffer)
@@ -72,8 +101,9 @@ bool Renderer::init(PlayLayer* layer) {
     debugText->setAnchorPoint(CCPoint(0, 1));
     debugText->setPosition(1, CCDirector::get()->getWinSize().height - 8);
     debugText->setScale(0.5);
-    debugText->setVisible(false);
     layer->addChild(debugText, 1000);
+
+    setEnabled(true);
 
     log::info("Renderer initialized");
     return true;
@@ -82,9 +112,13 @@ bool Renderer::init(PlayLayer* layer) {
 void Renderer::terminate() {
     if (shader)
         Shader::destroy(shader);
+    shader = nullptr;
+
     if (drbBuffer)
         Buffer::destroy(drbBuffer);
-    shader = nullptr;
+
+    if (srbBuffer)
+        Buffer::destroy(srbBuffer);
 
     currentRenderer = nullptr;
     log::info("Renderer terminated");
@@ -102,19 +136,20 @@ void Renderer::prepareShaderUniforms() {
 	
 	kmMat4Multiply(&matrixMVP, &matrixP, &matrixMV);
 
+    shader->setFloat("u_timer", gameTimer);
     shader->setMatrix4("u_mvp", matrixMVP.mat);
+    shader->setTextureArray("u_spriteSheets", (i32)SpriteSheet::COUNT, spriteSheets);
 
-    /*
-    i32 textureId = 0;
-    for (i32 i = 0; i < (i32)SpriteSheet::COUNT; i++) {
-        if (spriteSheets[i] == nullptr)
-            continue;
-        std::string name = "u_textures[" + std::to_string(i) + "]";
-        shader->setTexture(name.c_str(), textureId, spriteSheets[i]);
-        textureId++;
-    }
-    */
-   shader->setTextureArray("u_spriteSheets", (i32)SpriteSheet::COUNT, spriteSheets);
+    float audioScale;
+    if (layer->m_skipAudioStep)
+        audioScale = FMODAudioEngine::sharedEngine()->getMeteringValue();
+    else
+        audioScale = layer->m_audioEffectsLayer->m_audioScale;
+    
+    if (layer->m_isSilent || (layer->m_isPracticeMode && !layer->m_practiceMusicSync))
+        audioScale = 0.5;
+
+    shader->setFloat("u_audioScale", audioScale);
 }
 
 void Renderer::prepareDynamicRenderingBuffer() {
@@ -132,12 +167,16 @@ void Renderer::prepareDynamicRenderingBuffer() {
         drb.channelColors[id].b = sprite->m_color.b;
         drb.channelColors[id].a = (u8)sprite->m_opacity;
 
-        bool shouldBlending = layer->shouldBlend(id);
+        bool shouldBlend = layer->shouldBlend(id);
+        if (
+            id == COLOR_CHANNEL_P1 ||
+            id == COLOR_CHANNEL_P2 ||
+            id == COLOR_CHANNEL_LBG
+        ) {
+            shouldBlend = true;
+        }
 
-        if (shouldBlending)
-            log::info("{} BLENDING", id);
-
-        if (shouldBlending)
+        if (shouldBlend)
             drb.colorChannelBlendingBitmap[id >> 5] |= 1 << (id & 0x1f);
         else
             drb.colorChannelBlendingBitmap[id >> 5] &= ~(1 << (id & 0x1f));
@@ -149,6 +188,45 @@ void Renderer::prepareDynamicRenderingBuffer() {
     drbBuffer->bindAsUniformBuffer(DYNAMIC_RENDERING_BUFFER_BINDING);
 }
 
+void Renderer::generateStaticRenderingBuffer(ObjectSorter& sorter) {
+    usize srbSize = sizeof(StaticObjectInfo) * renderedGameObjectCount;
+    auto srb = (StaticRenderingBuffer*)malloc(srbSize);
+
+    auto objects = srb->objects;
+    usize index = 0;
+
+    for (auto it = sorter.iterator(); !it.isEnd(); it.next()) {
+        auto object = it.get();
+        auto objectInfo = &objects[index];
+
+        objectInfo->objectPosition = ccPointToGLM(object->getPosition());
+        if (object->getHasRotateAction())
+            objectInfo->rotationSpeed = ((EnhancedGameObject*)object)->m_rotationDelta; // 'rotationDelta' is incorrect naming
+        else
+            objectInfo->rotationSpeed = 0.0;
+
+        objectInfo->flags = 0;
+        if (object->m_usesAudioScale) {
+            objectInfo->flags |= OBJECT_FLAG_USES_AUDIO_SCALE;
+        
+            if (object->m_customAudioScale) {
+                objectInfo->flags |= OBJECT_FLAG_CUSTOM_AUDIO_SCALE;
+                objectInfo->audioScaleMin = object->m_minAudioScale;
+                objectInfo->audioScaleMax = object->m_maxAudioScale;
+            }
+            
+            if (typeinfo_cast<RingObject*>(object))
+                objectInfo->flags |= OBJECT_FLAG_IS_ORB;
+        }
+
+        objectSRBIndicies[object] = index;
+        index++;
+    }
+
+    srbBuffer = Buffer::createStaticDraw(srb, srbSize);
+    free(srb);
+};
+
 void Renderer::draw() {
     glBeginQuery(GL_TIME_ELAPSED, 50);
 
@@ -159,17 +237,19 @@ void Renderer::draw() {
     prepareShaderUniforms();
     prepareDynamicRenderingBuffer();
 
+    srbBuffer->bindAsStorageBuffer(STATIC_RENDERING_BUFFER_BINDING);
+
     glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
     objectBatch.draw();
+
+    if (debugText->isVisible())
+        updateDebugText();
 
     restoreGLStates();
     
     glEndQuery(GL_TIME_ELAPSED);
     glGetQueryObjecti64v(50, GL_QUERY_RESULT, &renderTime);
-
-    if (debugText->isVisible())
-        updateDebugText();
 }
 
 static std::string byteSizeToString(usize size) {
@@ -181,24 +261,44 @@ static std::string byteSizeToString(usize size) {
 }
 
 void Renderer::updateDebugText() {
-    std::string text = "";
+    if (!enabled) {
+        debugText->setString("Bismuth renderer is disabled\nPress F8 to enable");
+        return;
+    }
 
-    auto screenSize = CCDirector::get()->getWinSizeInPixels();
+    std::string text = "F";
 
-    text += fmt::format("Bismuth {}\n", Mod::get()->getVersion().toVString());
-    text += fmt::format("OpenGL {}\n", (const char*)glGetString(GL_VERSION));
-    text += fmt::format("{}\n", (const char*)glGetString(GL_RENDERER));
-    text += fmt::format("Window: {}x{}\n", screenSize.width, screenSize.height);
-    text += fmt::format("Render time: {}ms\n", (double)renderTime / 1000000.0);
-    text += fmt::format("Vertex buffer size: {}\n", byteSizeToString(objectBatch.getQuadCount() * sizeof(ObjectQuad)));
-    text += "\n";
-    text += "Press F3 to hide this screen";
+    if (debugTextEnabled) {
+        auto screenSize = CCDirector::get()->getWinSizeInPixels();
+
+        text += fmt::format("Bismuth renderer {}\n", Mod::get()->getVersion().toVString());
+        text += fmt::format("OpenGL {}\n", (const char*)glGetString(GL_VERSION));
+        text += fmt::format("{}\n", (const char*)glGetString(GL_RENDERER));
+        text += fmt::format("Window: {}x{}\n", screenSize.width, screenSize.height);
+        text += fmt::format("Render time: {}ms\n", (double)renderTime / 1000000.0);
+        text += fmt::format("Vertex buffer size: {}\n", byteSizeToString(objectBatch.getQuadCount() * sizeof(ObjectQuad)));
+        text += fmt::format("Static rendering buffer size: {}\n", byteSizeToString(srbBuffer->getSize()));
+        text += "\n";
+        text += "Press F3 to hide this screen";
+    }
 
     debugText->setString(text.c_str());
 }
 
 void Renderer::update(float dt) {
-    auto parent = getParent();
+    gameTimer += dt;
+    
+    float audioScale;
+    if (layer->m_skipAudioStep)
+        audioScale = FMODAudioEngine::sharedEngine()->getMeteringValue();
+    else
+        audioScale = layer->m_audioEffectsLayer->m_audioScale;
+    
+    if (layer->m_isSilent || (layer->m_isPracticeMode && !layer->m_practiceMusicSync))
+        audioScale = 0.5;
+
+    if (debugText->isVisible())
+        updateDebugText();
 }
 
 Ref<Renderer> Renderer::create(PlayLayer* layer) {
@@ -216,6 +316,14 @@ Ref<Renderer> Renderer::create(PlayLayer* layer) {
 
 Ref<Renderer> Renderer::get() {
     return currentRenderer;
+}
+
+void Renderer::setEnabled(bool enabled) {
+    this->enabled = enabled;
+    this->setVisible(enabled);
+    for (auto batch : CCArrayExt<CCNode*>(layer->m_batchNodes))
+        batch->setVisible(!enabled);
+    updateDebugText();
 }
 
 #include <Geode/modify/PlayLayer.hpp>
@@ -248,8 +356,15 @@ class $modify(RendererGJBaseGameLayer, GJBaseGameLayer) {
 #include <Geode/modify/CCKeyboardDispatcher.hpp>
 class $modify(RendererCCKeyboardDispatcher, cocos2d::CCKeyboardDispatcher) {
     bool dispatchKeyboardMSG(cocos2d::enumKeyCodes key, bool keyDown, bool isKeyRepeat) {
-        if (keyDown && key == cocos2d::KEY_F3 && !isKeyRepeat && Renderer::get())
-            Renderer::get()->toggleDebugText();
+        auto renderer = Renderer::get();
+        if (renderer) {
+            if (keyDown && key == cocos2d::KEY_F3 && !isKeyRepeat)
+                renderer->toggleDebugText();
+            if (keyDown && key == cocos2d::KEY_F8 && !isKeyRepeat)
+                renderer->setEnabled(!renderer->isEnabled());
+            if (keyDown && key == cocos2d::KEY_F9 && !isKeyRepeat)
+                renderer->setDifferenceModeEnabled(!renderer->isDifferenceModeEnabled());
+        }
 
         return cocos2d::CCKeyboardDispatcher::dispatchKeyboardMSG(key, keyDown, isKeyRepeat);
     }
@@ -258,6 +373,8 @@ class $modify(RendererCCKeyboardDispatcher, cocos2d::CCKeyboardDispatcher) {
 static i32 storedVAO, storedVBO, storedIBO, storedProgram;
 static i32 storedBlendSrcAlpha, storedBlendSrcRGB;
 static i32 storedBlendDstAlpha, storedBlendDstRGB;
+
+static i32 storedTextures[9];
 
 void storeGLStates() {
     glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &storedVAO);
@@ -270,6 +387,12 @@ void storeGLStates() {
     glGetIntegerv(GL_BLEND_SRC_RGB,   &storedBlendSrcRGB);
     glGetIntegerv(GL_BLEND_DST_ALPHA, &storedBlendDstAlpha);
     glGetIntegerv(GL_BLEND_DST_RGB,   &storedBlendDstRGB);
+
+    for (int i = 0; i < 9; i++) {
+        glActiveTexture(GL_TEXTURE0 + i);
+        glGetIntegerv(GL_TEXTURE_BINDING_2D, storedTextures + i);
+    }
+    glActiveTexture(GL_TEXTURE0);
 }
 
 void restoreGLStates() {
@@ -284,4 +407,10 @@ void restoreGLStates() {
         storedBlendSrcAlpha,
         storedBlendDstAlpha
     );
+
+    for (int i = 0; i < 9; i++) {
+        glActiveTexture(GL_TEXTURE0 + i);
+        glBindTexture(GL_TEXTURE_2D, storedTextures[i]);
+    }
+    glActiveTexture(GL_TEXTURE0);
 }

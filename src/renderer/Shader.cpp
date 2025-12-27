@@ -155,8 +155,7 @@ static ShaderBinaries compileProgram(const fs::path& vertexPath, const fs::path&
     return binaries;
 }
 
-/*
-static u32 createShader(i32 type, const char* source) {
+static u32 createShaderOld(i32 type, const char* source) {
     u32 shader = glCreateShader(type);
     glShaderSource(shader, 1, &source, NULL);
     glCompileShader(shader);
@@ -174,12 +173,10 @@ static u32 createShader(i32 type, const char* source) {
 
     return shader;
 }
-*/
 
-Shader* Shader::create(const ShaderSources& sources) {
-    /*
-    u32 vertexShader   = createShader(GL_VERTEX_SHADER, sources.vertexSource);
-    u32 fragmentShader = createShader(GL_FRAGMENT_SHADER, sources.fragmentSource);
+Shader* Shader::createOld(const ShaderSources& sources) {
+    u32 vertexShader   = createShaderOld(GL_VERTEX_SHADER, sources.vertexSource);
+    u32 fragmentShader = createShaderOld(GL_FRAGMENT_SHADER, sources.fragmentSource);
 
     if (!vertexShader || !fragmentShader) {
         if (vertexShader)   glDeleteShader(vertexShader);
@@ -209,8 +206,15 @@ Shader* Shader::create(const ShaderSources& sources) {
     Shader* shader = new Shader();
     shader->program = program;
     return shader;
-    */
-    return nullptr;
+}
+
+Shader* Shader::createOld(
+    const fs::path& vertexPath,
+    const fs::path& fragmentPath
+) {
+    auto vertexSource   = readResourceFile(vertexPath);
+    auto fragmentSource = readResourceFile(fragmentPath);
+    return createOld({vertexSource.value().c_str(), fragmentSource.value().c_str()});
 }
 
 #define GL_SHADER_BINARY_FORMAT_SPIR_V 0x9551
@@ -303,11 +307,26 @@ void Shader::setInt(u32 location, i32 value) {
     glUniform1i(location, value);
 }
 
-void Shader::setTexture(u32 location, i32 id, cocos2d::CCTexture2D* texture) {
+void Shader::setFloat(u32 location, float value) {
     use();
-    setInt(location, id);
+    glUniform1f(location, value);
+}
+
+void Shader::setTexture(u32 location, i32 id, u32 texture) {
+    use();
     glActiveTexture(GL_TEXTURE0 + id);
-    glBindTexture(GL_TEXTURE_2D, texture->getName());
+    glBindTexture(GL_TEXTURE_2D, texture);
+    setInt(location, id);
+}
+
+void Shader::setTextureArray(u32 location, i32 count, u32* textures) {
+    use();
+    glUniform1iv(location, count, (i32*)textures);
+
+    for (i32 i = 0; i < count; i++) {
+        glActiveTexture(GL_TEXTURE0 + i);
+        glBindTexture(GL_TEXTURE_2D, textures[i]);
+    }
 }
 
 void Shader::setTextureArray(u32 location, i32 count, cocos2d::CCTexture2D** textures) {

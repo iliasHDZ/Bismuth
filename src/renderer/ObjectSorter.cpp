@@ -66,8 +66,14 @@ void ObjectSorter::tryAddLayer(GJBaseGameLayer* layer, ZLayer zlayer, bool blend
 }
 
 ObjectBatchLayer* ObjectSorter::getLayer(ZLayer zLayer, bool blending, SpriteSheet sheet) {
-    // TODO: Probably use a faster way to find the layer
+    if ((i32)zLayer % 2 == 0) {
+        zLayer = (ZLayer)((i32)zLayer - 1);
+        
+        if (zLayer < ZLayer::B5)
+            zLayer = ZLayer::B5;
+    }
 
+    // TODO: Probably use a faster way to find the layer
     for (auto& layer : layers) {
         if (layer.zLayer == zLayer && layer.blending == blending && layer.sheet == sheet)
             return &layer;

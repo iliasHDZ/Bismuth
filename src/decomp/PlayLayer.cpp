@@ -1,4 +1,5 @@
 #include <Geode/Geode.hpp>
+#include <Geode/binding/EffectGameObject.hpp>
 #include "PlayLayer.hpp"
 
 #define COLOR_BG  1000
@@ -67,7 +68,7 @@ void decomp_PlayLayer::virtual_updateVisibility(float delta) {
     else
         audioScale = m_audioEffectsLayer->m_audioScale;
     
-    if (m_isSilent || (m_isPracticeMode && m_practiceMusicSync))
+    if (m_isSilent || (m_isPracticeMode && !m_practiceMusicSync))
         audioScale = 0.5;
 
     m_player1->m_audioScale = audioScale;
@@ -158,10 +159,10 @@ void decomp_PlayLayer::virtual_updateVisibility(float delta) {
             continue;
 
         if (object->m_usesAudioScale && !object->m_hasNoAudioScale) {
-            if (!object->m_customAudioScale)
+            if (!object->m_customAudioScale) {
                 object->setRScale(audioScale);
-            else {
-                float customAudioScale = (audioScale - 0.1) + (object->m_maxAudioScale - object->m_minAudioScale) * object->m_minAudioScale;
+            } else {
+                float customAudioScale = (audioScale - 0.1) * (object->m_maxAudioScale - object->m_minAudioScale) + object->m_minAudioScale;
                 object->setRScale(customAudioScale);
             }
         }

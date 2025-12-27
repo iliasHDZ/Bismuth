@@ -65,6 +65,7 @@ build-*/
 
 # Scripts
 buildnrun.bat
+config.bat
 
 # Random stuff
 profiling.txt

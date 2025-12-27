@@ -2,6 +2,8 @@
 
 #include <common.hpp>
 
+#define GL_SHADER_STORAGE_BUFFER 0x90D2
+
 class Buffer {
 private:
     ~Buffer();
@@ -20,6 +22,10 @@ public:
 
     inline void bindAsUniformBuffer(u32 binding) {
         glBindBufferBase(GL_UNIFORM_BUFFER, binding, id);
+    }
+
+    inline void bindAsStorageBuffer(u32 binding) {
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, binding, id);
     }
 
 public:

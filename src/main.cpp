@@ -51,7 +51,6 @@ class $modify(MyGJBaseGameLayer, GJBaseGameLayer) {
     }
 };
 
-/*
 #include <Geode/modify/PlayLayer.hpp>
 class $modify(MyPlayLayer, PlayLayer) {
     void updateVisibility(float dt) {
@@ -59,6 +58,7 @@ class $modify(MyPlayLayer, PlayLayer) {
     }
 };
 
+/*
 static int* a = nullptr;
 
 #include <Geode/modify/GameObject.hpp>

@@ -34,20 +34,42 @@ struct alignas(4) RGBA { u8 r, g, b, a; };
     float(((V) >> 24) & 0xff) / 255.0 \
 )
 
+const float PI = 3.1415926535897932384626433832795;
+
+vec2 rotatePointAroundOrigin(vec2 point, float angleInRadians) {
+    float rotSin = sin(angleInRadians);
+    float rotCos = cos(angleInRadians);
+
+    return vec2(
+        point.x * rotCos - point.y * rotSin,
+        point.x * rotSin + point.y * rotCos
+    );
+}
+
 #endif
 
 #define COLOR_CHANNEL_COUNT  1101
 #define GROUP_IDS_PER_OBJECT 10
 
+#define OBJECT_FLAG_USES_AUDIO_SCALE   (1 << 0)
+#define OBJECT_FLAG_CUSTOM_AUDIO_SCALE (1 << 1)
+#define OBJECT_FLAG_IS_ORB             (1 << 2)
+
 /*
     Rendering info of an object that never changes.
 */
 struct StaticObjectInfo {
+    vec2 objectPosition;
+    float rotationSpeed;
+    // Flags are the macro variables beginning with OBJECT_FLAG_*
+    int flags;
+    float audioScaleMin;
+    float audioScaleMax;
     /*
         GLSL does not support 16-bit integers.
         Instead, 2 group ids are fit into a uint.
     */
-    uint groupIds[GROUP_IDS_PER_OBJECT / 2];
+    // uint groupIds[GROUP_IDS_PER_OBJECT / 2];
 };
 
 /*

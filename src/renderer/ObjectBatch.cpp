@@ -10,9 +10,6 @@ using namespace geode::prelude;
 #define QUAD_TL 2
 #define QUAD_TR 3
 
-//#define DEBUG_LOG(...) log::info(__VA_ARGS__)
-#define DEBUG_LOG(...)
-
 ObjectBatch::~ObjectBatch() {
     if (vertexBuffer)
         Buffer::destroy(vertexBuffer);
@@ -50,7 +47,8 @@ void ObjectBatch::allocateReservations() {
 ObjectQuad* ObjectBatch::writeQuad(
     cocos2d::CCSprite* sprite,
     const cocos2d::CCAffineTransform& transform,
-    SpriteSheet spriteSheet
+    SpriteSheet spriteSheet,
+    const glm::vec2& parentObjectPosition
 ) {     
     CCTexture2D* texture = renderer->getSpriteSheetTexture(spriteSheet);
     if (texture == nullptr)
@@ -98,20 +96,17 @@ ObjectQuad* ObjectBatch::writeQuad(
     float sr2 = -transform.c;
     float ax = x1 * cr - y1 * sr2 + x;
     float ay = x1 * sr + y1 * cr2 + y;
-
     float bx = x2 * cr - y1 * sr2 + x;
     float by = x2 * sr + y1 * cr2 + y;
-
     float cx = x2 * cr - y2 * sr2 + x;
     float cy = x2 * sr + y2 * cr2 + y;
-
     float dx = x1 * cr - y2 * sr2 + x;
     float dy = x1 * sr + y2 * cr2 + y;
 
-    quad.verticies[QUAD_BL].position = glm::vec2(ax, ay);
-    quad.verticies[QUAD_BR].position = glm::vec2(bx, by);
-    quad.verticies[QUAD_TL].position = glm::vec2(dx, dy);
-    quad.verticies[QUAD_TR].position = glm::vec2(cx, cy);
+    quad.verticies[QUAD_BL].positionOffset = glm::vec2(ax, ay) - parentObjectPosition;
+    quad.verticies[QUAD_BR].positionOffset = glm::vec2(bx, by) - parentObjectPosition;
+    quad.verticies[QUAD_TL].positionOffset = glm::vec2(dx, dy) - parentObjectPosition;
+    quad.verticies[QUAD_TR].positionOffset = glm::vec2(cx, cy) - parentObjectPosition;
 
     float left   = crop.origin.x;
     float right  = crop.origin.x + crop.size.width;
@@ -158,6 +153,14 @@ void ObjectBatch::writeGameObjects(Ref<CCArray> objects) {
 void ObjectBatch::writeGameObject(GameObject* object) {
     CCAffineTransform transform = CCAffineTransformMakeIdentity();
 
+    float originalScaleX = object->getScaleX();
+    float originalScaleY = object->getScaleY();
+
+    if (object->m_usesAudioScale) {
+        object->setScaleX(object->m_scaleX);
+        object->setScaleY(object->m_scaleY);
+    }
+
     SpriteSheet sheet = (SpriteSheet)object->getParentMode();
 
     DEBUG_LOG("OBJECT {}", (void*)object);
@@ -168,6 +171,7 @@ void ObjectBatch::writeGameObject(GameObject* object) {
     DEBUG_LOG("- activeMainColorID: {}", object->m_activeMainColorID);
     DEBUG_LOG("- activeDetailColorID: {}", object->m_activeDetailColorID);
     DEBUG_LOG("- opacityMod2: {}", object->m_opacityMod2);
+    DEBUG_LOG("- srbIndex: {}", renderer->getObjectSRBIndex(object));
     DEBUG_LOG("- sprites:");
 
     writeSprite(object, object, transform);
@@ -179,6 +183,9 @@ void ObjectBatch::writeGameObject(GameObject* object) {
 
     if (object->m_colorSprite && object->m_colorSprite->getParent() != object)
         writeSprite(object, object->m_colorSprite, transform);
+
+    object->setScaleX(originalScaleX);
+    object->setScaleY(originalScaleY);
 }
 
 static std::string spriteTypeToString(ObjectBatch::SpriteType type) {
@@ -220,10 +227,13 @@ void ObjectBatch::writeSprite(
         DEBUG_LOG("    {:.2f}, {:.2f}, {:.2f}", transform.a, transform.c, transform.tx);
         DEBUG_LOG("    {:.2f}, {:.2f}, {:.2f}", transform.b, transform.d, transform.ty);
 
-        auto quad = writeQuad(sprite, transform, sheet);
+        usize srbIndex = renderer->getObjectSRBIndex(object);
+
+        auto quad = writeQuad(sprite, transform, sheet, ccPointToGLM(object->m_startPosition));
         if (quad) {
             for (i32 i = 0; i < 4; i++) {
                 auto& vertex = quad->verticies[i];
+                vertex.srbIndex     = srbIndex;
                 vertex.spriteSheet  = (u32)sheet;
                 vertex.colorChannel = colorChannel;
                 vertex.opacity      = (object->m_opacityMod2 > 0.0) ? (u8)(object->m_opacityMod2 * 255.0) : 255;

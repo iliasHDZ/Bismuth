@@ -15,13 +15,18 @@ using namespace geode;
     with the and the attrib pointer calls.
 
     ATTRIB(attributeId, type, name)
+
+    NOTE: The positionOffset attribute is this
+          vertex' offset from the position of
+          the object this sprite belongs to.
 */
 #define OBJECT_VERTEX_ATTRIBUTES(ATTRIB) \
-    ATTRIB(0, vec2, position) \
+    ATTRIB(0, vec2, positionOffset) \
     ATTRIB(1, vec2, texCoord) \
-    ATTRIB(2, u16,  colorChannel) \
-    ATTRIB(3, u8,   spriteSheet) \
-    ATTRIB(4, u8,   opacity)
+    ATTRIB(2, u32,  srbIndex) \
+    ATTRIB(3, u16,  colorChannel) \
+    ATTRIB(4, u8,   spriteSheet) \
+    ATTRIB(5, u8,   opacity)
 
 ////////////////////////////////////////////////
 
@@ -67,7 +72,8 @@ public:
     ObjectQuad* writeQuad(
         cocos2d::CCSprite* sprite,
         const cocos2d::CCAffineTransform& transform,
-        SpriteSheet spriteSheet
+        SpriteSheet spriteSheet,
+        const glm::vec2& parentObjectPosition
     );
 
     void writeGameObjects(Ref<cocos2d::CCArray> objects);

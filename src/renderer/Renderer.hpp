@@ -2,16 +2,19 @@
 
 #include <common.hpp>
 #include "ObjectBatch.hpp"
+#include "ObjectSorter.hpp"
 #include "Shader.hpp"
+#include <unordered_map>
 
 #include "../../resources/shaders/shared.h"
+#include "DifferenceMode.hpp"
 
 using namespace geode;
 
 class Renderer : public cocos2d::CCNode {
 private:
     inline Renderer()
-        : objectBatch(this) {}
+        : objectBatch(this), differenceMode(*this) {}
     ~Renderer() override;
 
     bool init(PlayLayer* layer);
@@ -22,6 +25,8 @@ private:
 
     void prepareDynamicRenderingBuffer();
 
+    void generateStaticRenderingBuffer(ObjectSorter& sorter);
+
     void draw() override;
 
     void updateDebugText();
@@ -30,7 +35,8 @@ public:
     void update(float dt) override;
 
     inline void toggleDebugText() {
-        debugText->setVisible(!debugText->isVisible());
+        if (enabled)
+            debugText->setVisible(!debugText->isVisible());
     }
 
     inline cocos2d::CCTexture2D* getSpriteSheetTexture(SpriteSheet sheet) {
@@ -42,6 +48,29 @@ public:
     inline PlayLayer* getPlayLayer() {
         return layer;
     }
+
+    inline usize getObjectSRBIndex(GameObject* object) {
+        return objectSRBIndicies[object];
+    }
+
+    inline bool isEnabled() { return enabled; }
+
+    inline DifferenceMode* getDifferenceMode() {
+        if (!differenceModeEnabled) return nullptr;
+        return &differenceMode;
+    }
+
+    inline bool isDebugTextEnabled() { return debugTextEnabled; }
+    inline void setDebugTextEnabled(bool enabled) {
+        debugTextEnabled = enabled;
+    }
+
+    inline bool isDifferenceModeEnabled() { return differenceModeEnabled; }
+    inline void setDifferenceModeEnabled(bool enabled) {
+        differenceModeEnabled = enabled;
+    }
+
+    void setEnabled(bool enabled);
 
 public:
     static Ref<Renderer> create(PlayLayer* layer);
@@ -55,6 +84,12 @@ public:
 private:
     PlayLayer* layer;
 
+    bool enabled = false;
+
+    bool debugTextEnabled = false;
+
+    std::unordered_map<GameObject*, usize> objectSRBIndicies;
+
     cocos2d::CCTexture2D* spriteSheets[(i32)SpriteSheet::COUNT] = { nullptr };
 
     Ref<cocos2d::CCLabelBMFont> debugText;
@@ -65,6 +100,14 @@ private:
     DynamicRenderingBuffer drb = { 0 };
     Buffer* drbBuffer = nullptr;
 
+    Buffer* srbBuffer = nullptr;
+
+    bool differenceModeEnabled = false;
+    DifferenceMode differenceMode;
+
+    float gameTimer = 0.0;
+
+    i64 renderedGameObjectCount;
     i64 renderTime;
 };
 
