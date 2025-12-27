@@ -17,54 +17,6 @@ DifferenceMode::~DifferenceMode() {
         Shader::destroy(shader);
 }
 
-/*
-void DifferenceMode::drawSceneHook1() {
-    auto currentSize = CCDirector::get()->getWinSizeInPixels();
-
-    if (lastSize != currentSize) {
-        prepare(currentSize.width, currentSize.height);
-        lastSize = currentSize;
-    }
-
-    rendererPrevEnabled = renderer.isEnabled();
-    prevPaused          = CCDirector::get()->isPaused();
-}
-
-void DifferenceMode::drawSceneHook2() {
-    glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prevFramebuffer);
-
-    CCDirector::get()->pause();
-
-    renderer.setEnabled(false);
-    glBindFramebuffer(GL_FRAMEBUFFER, vanillaFramebuffer);
-}
-
-void DifferenceMode::drawSceneHook3() {
-    renderer.setEnabled(true);
-    glBindFramebuffer(GL_FRAMEBUFFER, bismuthFramebuffer);
-}
-
-void DifferenceMode::drawSceneHook4() {
-    if (!prevPaused)
-        CCDirector::get()->resume();
-    glBindFramebuffer(GL_FRAMEBUFFER, prevFramebuffer);
-    renderer.setEnabled(rendererPrevEnabled);
-
-    storeGLStates();
-
-    shader->use();
-    shader->setTexture(shader->location("u_vanillaFrame"), 0, vanillaTexture);
-    shader->setTexture(shader->location("u_bismuthFrame"), 0, bismuthTexture);
-    shader->setFloat("u_intensity", intensity);
-    shader->setFloat("u_backdropIntensity", backdropIntensity);
-
-    glBindVertexArray(fullscreenQuadVAO);
-    glDrawArrays(GL_TRIANGLES, 0, 6);
-
-    restoreGLStates();
-}
-*/
-
 void DifferenceMode::drawSceneHook() {
     auto currentSize = CCDirector::get()->getOpenGLView()->getWindowedSize();
 
@@ -203,22 +155,7 @@ class $modify(MyCCDirector, CCDirector) {
         if (m_pNextScene)
             setNextScene();
         m_uTotalFrames++;
-        
-
-        /*
-        diffMode->drawSceneHook([this]() {
-            CCDirector::drawScene();
-        });
-        */
 
         diffMode->drawSceneHook();
-        /*
-        diffMode->drawSceneHook1();
-        diffMode->drawSceneHook2();
-        CCDirector::drawScene();
-        diffMode->drawSceneHook3();
-        CCDirector::drawScene();
-        diffMode->drawSceneHook4();
-        */
     }
 };
