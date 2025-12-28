@@ -2,16 +2,14 @@
 #include <Geode/binding/EffectGameObject.hpp>
 #include "PlayLayer.hpp"
 
+#include <algorithm>
+
 #define COLOR_BG  1000
 #define COLOR_P1  1005
 #define COLOR_P2  1006
 #define COLOR_LBG 1007
 
 #define OBJECT_BREAKABLE_BLOCK 143
-
-#define MIN(A, B) ((A) < (B) ? (A) : (B))
-#define MAX(A, B) ((A) > (B) ? (A) : (B))
-#define CLAMP(A, L, H) MAX(L, MIN(A, H))
 
 using namespace cocos2d;
 
@@ -48,16 +46,16 @@ void decomp_PlayLayer::virtual_updateVisibility(float delta) {
 
     CCSize winSize = CCDirector::sharedDirector()->getWinSize();
 
-    float smallerWinWidth = winSize.width - 37.5;
-    float biggerWinWidth  = smallerWinWidth + 110.0;
+    float centerLeftX  = winSize.width * 0.5 - 75.0;
+    float centerRightX = centerLeftX + 110.0;
 
-    float screenRight    = CCDirector::sharedDirector()->getScreenRight();
-    float someScreenLeft = screenRight - biggerWinWidth - 90.0;
+    float someScreenLeft = CCDirector::sharedDirector()->getScreenRight() - centerRightX - 90.0;
 
-    ccColor3B someLBGColor =
-        ( (float)(colorBG.r + colorBG.b + colorBG.g) >= 150.0f )
-            ? ccColor3B { 255, 255, 255 }
-            : colorLBG;
+    ccColor3B someLBGColor;
+    if ((float)(colorBG.r + colorBG.g + colorBG.b) >= 150.0f)
+        someLBGColor = ccColor3B { 255, 255, 255 };
+    else
+        someLBGColor = colorLBG;
 
     bool isPlayerDead = m_player1->m_isDead;
     bool isLevelFlipping = isFlipping();
@@ -227,7 +225,6 @@ void decomp_PlayLayer::virtual_updateVisibility(float delta) {
         } else {
             if (!isPlayerDead) {
                 CCPoint fadePos = object->getRealPosition();
-
                 if (fadePos.x <= m_cameraUnzoomedX)
                     fadePos.x += object->m_fadeMargin;
                 else
@@ -235,41 +232,26 @@ void decomp_PlayLayer::virtual_updateVisibility(float delta) {
                 
                 float relMod = getRelativeMod(fadePos, 0.02, 0.014285714, 0.0) * 255.0;
 
-                float someWidth1, someWidth2;
-                if (fadePos.x <= biggerWinWidth + m_gameState.m_cameraPosition2.x) {
-                    someWidth1 = smallerWinWidth + m_gameState.m_cameraPosition2.x - fadePos.x;
-                    someWidth2 = smallerWinWidth - 30.0;
-                } else {
-                    someWidth1 = fadePos.x - m_gameState.m_cameraPosition2.x - biggerWinWidth;
-                    someWidth2 = screenRight;
-                }
+                float someWidth1;
+                if (fadePos.x <= centerRightX + m_gameState.m_cameraPosition2.x)
+                    someWidth1 = (centerLeftX + m_gameState.m_cameraPosition2.x - fadePos.x) / std::max(centerLeftX - 30.f, 1.f);
+                else
+                    someWidth1 = (fadePos.x - m_gameState.m_cameraPosition2.x - centerRightX) / std::max(someScreenLeft, 1.f);
 
-                someWidth1 /= MAX(someWidth2, 1.0);
+                someWidth1 = std::clamp(someWidth1, 0.0f, 1.0f);
 
-                /*
-                if (someWidth1 < 1.0) {
-                    if (someWidth1 < 0.0)
-                        someWidth2 = (someWidth1 + 0.0475) * 255.0;
-                    else {
-                        someWidth1 = 0.0;
-                        someWidth2 = 12.75;
-                    }
-                } else {                  
-                    someWidth1 = 1.0;
-                    someWidth2 = 255.0;
-                }*/
-                someWidth1 = CLAMP(someWidth1, 0.0, 1.0);
-                someWidth2 = (someWidth1 + 0.0475) * 255.0;
-                object->setOpacity(MIN(someWidth2, relMod));
-
-                someWidth2 = (someWidth1 + 0.12750001) * 255.0;
-                object->setGlowOpacity(MIN(someWidth2, relMod));
+                object->setOpacity(    std::min((someWidth1 * 0.95f + 0.05f) * 255.f, relMod));
+                object->setGlowOpacity(std::min((someWidth1 * 0.85f + 0.15f) * 255.f, relMod));
 
                 float opacity = (float)object->getOpacity() / 255.0;
                 if (opacity <= 0.8)
                     object->setGlowColor(m_lightBGColor);
                 else {
-                    ccColor3B color = GJEffectManager::getMixedColor(m_lightBGColor, someLBGColor, (1.0 - (opacity - 0.8) / 0.2) + 0.21);
+                    ccColor3B color = GJEffectManager::getMixedColor(
+                        m_lightBGColor,
+                        someLBGColor,
+                        (1.f - (opacity - 0.8f) / 0.2f) * 0.3f + 0.7f
+                    );
                     object->setGlowColor(color);
                 }
             } else {

@@ -1,4 +1,5 @@
 #include "Shader.hpp"
+#include "Geode/cocos/platform/win32/CCGL.h"
 
 #include <Geode/Geode.hpp>
 #include <vector>
@@ -307,9 +308,24 @@ void Shader::setInt(u32 location, i32 value) {
     glUniform1i(location, value);
 }
 
+void Shader::setUInt(u32 location, u32 value) {
+    use();
+    glUniform1ui(location, value);
+}
+
 void Shader::setFloat(u32 location, float value) {
     use();
     glUniform1f(location, value);
+}
+
+void Shader::setVec2(u32 location, glm::vec2 value) {
+    use();
+    glUniform2f(location, value.x, value.y);
+}
+
+void Shader::setVec3(u32 location, glm::vec3 value) {
+    use();
+    glUniform3f(location, value.x, value.y, value.z);
 }
 
 void Shader::setTexture(u32 location, i32 id, u32 texture) {

@@ -21,5 +21,12 @@
 			"resources/shaders/*.glsl",
 			"resources/shaders/*.h"
 		]
+	},
+	"settings": {
+		"enabled": {
+			"name": "Bismuth enabled",
+			"type": "bool",
+			"default": true
+		}
 	}
 }

@@ -16,6 +16,4 @@ void main() {
 
     vec3 diff = abs(vcol - bcol) * u_intensity + vcol * u_backdropIntensity;
     FragColor = vec4(diff, 1.0);
-
-    // FragColor = vec4(vcol, 1.0);
 }

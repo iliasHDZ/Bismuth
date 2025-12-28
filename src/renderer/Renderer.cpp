@@ -1,6 +1,8 @@
 #include "Renderer.hpp"
+#include "Geode/cocos/CCDirector.h"
 #include "Geode/cocos/platform/win32/CCGL.h"
 #include "ccTypes.h"
+#include "common.hpp"
 #include <Geode/binding/RingObject.hpp>
 
 using namespace geode::prelude;
@@ -11,6 +13,12 @@ Renderer::~Renderer() { terminate(); }
 
 bool Renderer::init(PlayLayer* layer) {
     this->layer = layer;
+    
+    auto size = CCDirector::get()->getWinSize();
+    log::info("{} {}", size.width, size.height);
+
+    if (!Mod::get()->getSettingValue<bool>("enabled"))
+        return false;
 
     log::info("OpenGL Version: {}", (const char*)glGetString(GL_VERSION));
 
@@ -59,10 +67,13 @@ bool Renderer::init(PlayLayer* layer) {
         DEBUG_LOG("  - zlayer: {}", (i32)object->getObjectZLayer());
         DEBUG_LOG("  - blending: {}", object->m_baseOrDetailBlending);
         DEBUG_LOG("  - spritesheet: {}", object->getParentMode());
-        DEBUG_LOG("  - usesAudioScale: {}", object->m_usesAudioScale);
-        DEBUG_LOG("  - customAudioScale: {}", object->m_customAudioScale);
-        DEBUG_LOG("  - maxAudioScale: {}", object->m_maxAudioScale);
-        DEBUG_LOG("  - minAudioScale: {}", object->m_minAudioScale);
+        // DEBUG_LOG("  - usesAudioScale: {}", object->m_usesAudioScale);
+        // DEBUG_LOG("  - customAudioScale: {}", object->m_customAudioScale);
+        // DEBUG_LOG("  - maxAudioScale: {}", object->m_maxAudioScale);
+        // DEBUG_LOG("  - minAudioScale: {}", object->m_minAudioScale);
+        DEBUG_LOG("  - glowColorIsLBG: {}", object->m_glowColorIsLBG);
+        DEBUG_LOG("  - customGlowColor: {}", object->m_customGlowColor);
+        DEBUG_LOG("  - opacityMod: {}", object->m_opacityMod);
         if (object->getHasRotateAction())
             DEBUG_LOG("  - rotationDelta: {}", ((EnhancedGameObject*)object)->m_rotationDelta);
 
@@ -139,6 +150,19 @@ void Renderer::prepareShaderUniforms() {
     shader->setFloat("u_timer", gameTimer);
     shader->setMatrix4("u_mvp", matrixMVP.mat);
     shader->setTextureArray("u_spriteSheets", (i32)SpriteSheet::COUNT, spriteSheets);
+    shader->setVec2("u_cameraPosition", ccPointToGLM(layer->m_gameState.m_cameraPosition2));
+    shader->setFloat("u_cameraWidth", layer->m_cameraWidth);
+    auto winsize = CCDirector::get()->getWinSize();
+    shader->setVec2("u_winSize", glm::vec2(winsize.width, winsize.height));
+    shader->setFloat("u_screenRight", CCDirector::get()->getScreenRight());
+    shader->setFloat("u_cameraUnzoomedX", layer->m_cameraUnzoomedX);
+    ccColor3B specialLightBG = GameToolbox::transformColor(layer->m_effectManager->activeColorForIndex(COLOR_CHANNEL_BG), 0.0, -0.2, 0.2);
+    shader->setVec3("u_specialLightBGColor", ccColor3BToGLM(specialLightBG));
+
+    u32 gameStateFlags = 0;
+    if (layer->m_player1->m_isDead)
+        gameStateFlags |= GAME_STATE_IS_PLAYER_DEAD;
+    shader->setUInt("u_gameStateFlags", gameStateFlags);
 
     float audioScale;
     if (layer->m_skipAudioStep)
@@ -218,6 +242,10 @@ void Renderer::generateStaticRenderingBuffer(ObjectSorter& sorter) {
             if (typeinfo_cast<RingObject*>(object))
                 objectInfo->flags |= OBJECT_FLAG_IS_ORB;
         }
+
+        if (object->m_isInvisibleBlock) objectInfo->flags |= OBJECT_FLAG_IS_INVISIBLE_BLOCK;
+        if (object->m_customGlowColor)  objectInfo->flags |= OBJECT_FLAG_SPECIAL_GLOW_COLOR;
+        objectInfo->fadeMargin = object->m_fadeMargin;
 
         objectSRBIndicies[object] = index;
         index++;

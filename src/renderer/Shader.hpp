@@ -50,9 +50,24 @@ public:
         setInt(location(name), value);
     }
 
+    void setUInt(u32 location, u32 value);
+    inline void setUInt(const char* name, u32 value) {
+        setUInt(location(name), value);
+    }
+
     void setFloat(u32 location, float value);
     inline void setFloat(const char* name, float value) {
         setFloat(location(name), value);
+    }
+
+    void setVec2(u32 location, glm::vec2 value);
+    inline void setVec2(const char* name, glm::vec2 value) {
+        setVec2(location(name), value);
+    }
+
+    void setVec3(u32 location, glm::vec3 value);
+    inline void setVec3(const char* name, glm::vec3 value) {
+        setVec3(location(name), value);
     }
 
     void setTexture(u32 location, i32 id, u32 texture);

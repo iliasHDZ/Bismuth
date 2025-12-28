@@ -1,5 +1,6 @@
 #include "ObjectBatch.hpp"
 #include "Renderer.hpp"
+#include "common.hpp"
 
 #include <string>
 
@@ -216,11 +217,13 @@ void ObjectBatch::writeSprite(
     if (!sprite->getDontDraw()) {
         SpriteSheet sheet = type != SpriteType::GLOW ? (SpriteSheet)object->getParentMode() : SpriteSheet::GLOW;
 
-        u32 colorChannel = type == SpriteType::MAIN ? object->m_activeMainColorID : object->m_activeDetailColorID;
+        u32 colorChannel = type == SpriteType::COLOR ? object->m_activeDetailColorID : object->m_activeMainColorID;
 
         bool isSpriteBlack = (sprite == object) ? object->m_isObjectBlack : object->m_isColorSpriteBlack;
         if (isSpriteBlack)
             colorChannel = COLOR_CHANNEL_BLACK;
+        if (type == SpriteType::GLOW && object->m_glowColorIsLBG)
+            colorChannel = COLOR_CHANNEL_LBG;
 
         DEBUG_LOG("  - {} {}SPRITE {}", spriteTypeToString(type), isSpriteBlack ? "BLACK " : "", (void*)sprite);
 

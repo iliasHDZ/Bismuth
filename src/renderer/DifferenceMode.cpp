@@ -20,8 +20,6 @@ DifferenceMode::~DifferenceMode() {
 void DifferenceMode::drawSceneHook() {
     auto currentSize = CCDirector::get()->getOpenGLView()->getWindowedSize();
 
-    log::info("dyjty {} {}", currentSize.width, currentSize.height);
-
     if (lastSize != currentSize) {
         prepare(currentSize.width, currentSize.height);
         lastSize = currentSize;
@@ -48,7 +46,6 @@ void DifferenceMode::drawSceneHook() {
 
     storeGLStates();
 
-    log::info("shadr {}", (void*)shader);
     shader->use();
     shader->setTexture(shader->location("u_vanillaFrame"), 0, vanillaTexture);
     shader->setTexture(shader->location("u_bismuthFrame"), 1, bismuthTexture);
@@ -98,8 +95,6 @@ void DifferenceMode::prepare(u32 width, u32 height) {
     storeGLStates();
 
     destroyFramebuffers();
-
-    log::info("{} {}", width, height);
 
     vanillaTexture     = createFramebufferTexture(width, height);
     vanillaFramebuffer = createColorFramebuffer(vanillaTexture);

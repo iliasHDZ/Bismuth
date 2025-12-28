@@ -12,7 +12,7 @@ flat in uint t_blending;
 void main() {
     FragColor = texture(u_spriteSheets[t_spriteSheet], t_texCoord) * t_color;
 
-    // FragColor.rgb *= FragColor.a;
+    FragColor.rgb *= t_color.a;
     if (t_blending != 0) {
         FragColor.rgb *= FragColor.a;
         FragColor.a = 0;

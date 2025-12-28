@@ -1,4 +1,5 @@
 #include <Geode/Geode.hpp>
+#include <Geode/binding/PlayLayer.hpp>
 #include "profiler.hpp"
 #include "decomp/PlayLayer.hpp"
 #include "decomp/GJBaseGameLayer.hpp"
@@ -51,10 +52,30 @@ class $modify(MyGJBaseGameLayer, GJBaseGameLayer) {
     }
 };
 
+static bool decompEnabled = false;
+
 #include <Geode/modify/PlayLayer.hpp>
 class $modify(MyPlayLayer, PlayLayer) {
     void updateVisibility(float dt) {
-        ((decomp_PlayLayer*)this)->virtual_updateVisibility(dt);
+        if (decompEnabled)
+            ((decomp_PlayLayer*)this)->virtual_updateVisibility(dt);
+        else
+            PlayLayer::updateVisibility(dt);
+    }
+};
+
+#include <Geode/modify/CCKeyboardDispatcher.hpp>
+class $modify(OCCKeyboardDispatcher, cocos2d::CCKeyboardDispatcher) {
+    bool dispatchKeyboardMSG(cocos2d::enumKeyCodes key, bool keyDown, bool isKeyRepeat) {
+        if (keyDown && key == cocos2d::KEY_F1 && !isKeyRepeat) {
+            decompEnabled = !decompEnabled;
+            if (decompEnabled)
+                log::info("DECOMP ENABLED");
+            else
+                log::info("DECOMP DISABLED");
+        }
+
+        return cocos2d::CCKeyboardDispatcher::dispatchKeyboardMSG(key, keyDown, isKeyRepeat);
     }
 };
 

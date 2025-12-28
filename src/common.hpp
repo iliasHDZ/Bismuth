@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ccTypes.h"
 #include <glm/glm.hpp>
 #include <Geode/Geode.hpp>
 #include <filesystem>
@@ -35,21 +36,10 @@ namespace fs = std::filesystem;
 using usize = u64;
 using isize = i64;
 
-#define COLOR_CHANNEL_BG      1000
-#define COLOR_CHANNEL_G1      1001
-#define COLOR_CHANNEL_LINE    1002
-#define COLOR_CHANNEL_3DL     1003
-#define COLOR_CHANNEL_OBJ     1004
-#define COLOR_CHANNEL_P1      1005
-#define COLOR_CHANNEL_P2      1006
-#define COLOR_CHANNEL_LBG     1007
-#define COLOR_CHANNEL_G2      1009
-#define COLOR_CHANNEL_BLACK   1010
-#define COLOR_CHANNEL_WHITE   1011
-#define COLOR_CHANNEL_LIGHTER 1012
-#define COLOR_CHANNEL_MG      1013
-#define COLOR_CHANNEL_MG2     1014
-
 inline vec2 ccPointToGLM(const cocos2d::CCPoint& point) {
     return vec2(point.x, point.y);
+}
+
+inline vec3 ccColor3BToGLM(const cocos2d::ccColor3B& color) {
+    return vec3(color.r / 255.f, color.g / 255.f, color.b / 255.f);
 }

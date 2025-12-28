@@ -24,6 +24,16 @@ struct alignas(4) RGBA { u8 r, g, b, a; };
 
 #else
 
+#define SPRITE_SHEET_GAME_1   0
+#define SPRITE_SHEET_GAME_2   1
+#define SPRITE_SHEET_TEXT     2
+#define SPRITE_SHEET_FIRE     3
+#define SPRITE_SHEET_SPECIAL  4
+#define SPRITE_SHEET_GLOW     5
+#define SPRITE_SHEET_PIXEL    6
+#define SPRITE_SHEET_UNK      7
+#define SPRITE_SHEET_PARTICLE 8
+
 #extension GL_EXT_scalar_block_layout:require
 
 #define RGBA uint
@@ -46,6 +56,8 @@ vec2 rotatePointAroundOrigin(vec2 point, float angleInRadians) {
     );
 }
 
+#define BITMAP_GET(B, I) ( ( (B)[(I) >> 5] >> ((I) & 0x1f) ) & 1 )
+
 #endif
 
 #define COLOR_CHANNEL_COUNT  1101
@@ -54,6 +66,25 @@ vec2 rotatePointAroundOrigin(vec2 point, float angleInRadians) {
 #define OBJECT_FLAG_USES_AUDIO_SCALE   (1 << 0)
 #define OBJECT_FLAG_CUSTOM_AUDIO_SCALE (1 << 1)
 #define OBJECT_FLAG_IS_ORB             (1 << 2)
+#define OBJECT_FLAG_IS_INVISIBLE_BLOCK (1 << 3)
+#define OBJECT_FLAG_SPECIAL_GLOW_COLOR (1 << 4)
+
+#define GAME_STATE_IS_PLAYER_DEAD (1 << 0)
+
+#define COLOR_CHANNEL_BG      1000
+#define COLOR_CHANNEL_G1      1001
+#define COLOR_CHANNEL_LINE    1002
+#define COLOR_CHANNEL_3DL     1003
+#define COLOR_CHANNEL_OBJ     1004
+#define COLOR_CHANNEL_P1      1005
+#define COLOR_CHANNEL_P2      1006
+#define COLOR_CHANNEL_LBG     1007
+#define COLOR_CHANNEL_G2      1009
+#define COLOR_CHANNEL_BLACK   1010
+#define COLOR_CHANNEL_WHITE   1011
+#define COLOR_CHANNEL_LIGHTER 1012
+#define COLOR_CHANNEL_MG      1013
+#define COLOR_CHANNEL_MG2     1014
 
 /*
     Rendering info of an object that never changes.
@@ -65,6 +96,7 @@ struct StaticObjectInfo {
     int flags;
     float audioScaleMin;
     float audioScaleMax;
+    float fadeMargin;
     /*
         GLSL does not support 16-bit integers.
         Instead, 2 group ids are fit into a uint.
