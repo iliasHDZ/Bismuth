@@ -3,6 +3,7 @@
 #include "Geode/cocos/platform/win32/CCGL.h"
 #include "ccTypes.h"
 #include "common.hpp"
+#include <Geode/binding/GJBaseGameLayer.hpp>
 #include <Geode/binding/RingObject.hpp>
 
 using namespace geode::prelude;
@@ -11,11 +12,18 @@ static Renderer* currentRenderer;
 
 Renderer::~Renderer() { terminate(); }
 
+static std::string byteSizeToString(usize size) {
+    std::string unit = "B";
+    double dsize = size;
+    if (dsize > 1000.0) { dsize /= 1000.0; unit = "kB"; }
+    if (dsize > 1000.0) { dsize /= 1000.0; unit = "MB"; }
+    return fmt::format("{:.3f}{}", dsize, unit);
+}
+
 bool Renderer::init(PlayLayer* layer) {
     this->layer = layer;
     
     auto size = CCDirector::get()->getWinSize();
-    log::info("{} {}", size.width, size.height);
 
     if (!Mod::get()->getSettingValue<bool>("enabled"))
         return false;
@@ -56,24 +64,39 @@ bool Renderer::init(PlayLayer* layer) {
         }
     }
     */
-    log::info("Level contains {} object(s):", layer->m_objects->count());
+
+    groupStateCount = 1;
+
+    log::info("Sorting objects...");
+
+    log::info("Level contains {} object(s)", layer->m_objects->count());
     for (auto object : CCArrayExt<GameObject*>(layer->m_objects)) {
         if (object == layer->m_anticheatSpike) {
             DEBUG_LOG("- anti-cheat spike");
             continue;
         }
 
+        if (object->isTrigger())
+            continue;
+
+        for (i32 i = 0; i < object->m_groupCount; i++) {
+            auto id = object->m_groups->at(i);
+            if ((id + 1) > groupStateCount)
+                groupStateCount = id + 1;
+            usedGroupIds.insert(id);
+        }
+
         DEBUG_LOG("- {}, id: {}", (void*)object, object->m_objectID);
         DEBUG_LOG("  - zlayer: {}", (i32)object->getObjectZLayer());
         DEBUG_LOG("  - blending: {}", object->m_baseOrDetailBlending);
         DEBUG_LOG("  - spritesheet: {}", object->getParentMode());
-        // DEBUG_LOG("  - usesAudioScale: {}", object->m_usesAudioScale);
-        // DEBUG_LOG("  - customAudioScale: {}", object->m_customAudioScale);
-        // DEBUG_LOG("  - maxAudioScale: {}", object->m_maxAudioScale);
-        // DEBUG_LOG("  - minAudioScale: {}", object->m_minAudioScale);
         DEBUG_LOG("  - glowColorIsLBG: {}", object->m_glowColorIsLBG);
         DEBUG_LOG("  - customGlowColor: {}", object->m_customGlowColor);
         DEBUG_LOG("  - opacityMod: {}", object->m_opacityMod);
+        if (object->m_baseColor && object->m_baseColor->m_usesHSV)
+            DEBUG_LOG("  - baseHSV: {} {} {} {} {}", object->m_baseColor->m_hsv.h, object->m_baseColor->m_hsv.s, object->m_baseColor->m_hsv.v, object->m_baseColor->m_hsv.absoluteSaturation, object->m_baseColor->m_hsv.absoluteBrightness);
+        if (object->m_detailColor && object->m_detailColor->m_usesHSV)
+            DEBUG_LOG("  - detailHSV: {} {} {} {} {}", object->m_detailColor->m_hsv.h, object->m_detailColor->m_hsv.s, object->m_detailColor->m_hsv.v, object->m_detailColor->m_hsv.absoluteSaturation, object->m_detailColor->m_hsv.absoluteBrightness);
         if (object->getHasRotateAction())
             DEBUG_LOG("  - rotationDelta: {}", ((EnhancedGameObject*)object)->m_rotationDelta);
 
@@ -87,7 +110,13 @@ bool Renderer::init(PlayLayer* layer) {
         objectBatch.reserveForGameObject(it.get());
     }
 
+    log::info("Generating static rendering buffer....");
+
     generateStaticRenderingBuffer(sorter);
+
+    log::info("rtyhs {}", byteSizeToString(srbBuffer->getSize()));
+
+    log::info("Generating vertex buffer...");
 
     objectBatch.allocateReservations();
     for (auto it = sorter.iterator(); !it.isEnd(); it.next())
@@ -97,15 +126,23 @@ bool Renderer::init(PlayLayer* layer) {
     std::map<std::string, std::string> shaderMacroVariables;
 
     shaderMacroVariables["TOTAL_OBJECT_COUNT"] = std::to_string(renderedGameObjectCount == 0 ? 1 : renderedGameObjectCount);
-    shaderMacroVariables["TOTAL_GROUP_COUNT"]  = "1";
+    shaderMacroVariables["GROUP_ID_LIMIT"]     = std::to_string(groupStateCount);
+
+    log::info("Compiling shaders...");
 
     shader = Shader::create("object.vert", "object.frag", shaderMacroVariables);
     if (!shader)
         return false;
 
-    drbBuffer = Buffer::createDynamicDraw(sizeof(DynamicRenderingBuffer));
+    log::info("fucn");
+
+    drbBuffer = Buffer::createDynamicDraw(sizeof(DynamicRenderingBuffer) + sizeof(GroupState) * groupStateCount);
     if (!drbBuffer)
         return false;
+
+    log::info("zefzerg");
+
+    drb = (DynamicRenderingBuffer*)malloc(drbBuffer->getSize());
 
     debugText = CCLabelBMFont::create("", "chatFont.fnt");
 
@@ -127,6 +164,8 @@ void Renderer::terminate() {
 
     if (drbBuffer)
         Buffer::destroy(drbBuffer);
+    if (drb)
+        free(drb);
 
     if (srbBuffer)
         Buffer::destroy(srbBuffer);
@@ -186,10 +225,10 @@ void Renderer::prepareDynamicRenderingBuffer() {
 
         auto id = sprite->m_colorID;
 
-        drb.channelColors[id].r = sprite->m_color.r;
-        drb.channelColors[id].g = sprite->m_color.g;
-        drb.channelColors[id].b = sprite->m_color.b;
-        drb.channelColors[id].a = (u8)sprite->m_opacity;
+        drb->channelColors[id].r = sprite->m_color.r;
+        drb->channelColors[id].g = sprite->m_color.g;
+        drb->channelColors[id].b = sprite->m_color.b;
+        drb->channelColors[id].a = (u8)sprite->m_opacity;
 
         bool shouldBlend = layer->shouldBlend(id);
         if (
@@ -201,15 +240,37 @@ void Renderer::prepareDynamicRenderingBuffer() {
         }
 
         if (shouldBlend)
-            drb.colorChannelBlendingBitmap[id >> 5] |= 1 << (id & 0x1f);
+            drb->colorChannelBlendingBitmap[id >> 5] |= 1 << (id & 0x1f);
         else
-            drb.colorChannelBlendingBitmap[id >> 5] &= ~(1 << (id & 0x1f));
+            drb->colorChannelBlendingBitmap[id >> 5] &= ~(1 << (id & 0x1f));
     }
 
-    drb.channelColors[COLOR_CHANNEL_BLACK] = { 0, 0, 0, 255 };
+    drb->channelColors[COLOR_CHANNEL_BLACK] = { 0, 0, 0, 255 };
 
-    drbBuffer->write(&drb, sizeof(DynamicRenderingBuffer));
+    for (auto groupId : usedGroupIds) {
+        float opacity = 0.0;
+        if (!disabledGroups.contains(groupId))
+            opacity = layer->m_effectManager->opacityModForGroup(groupId);
+
+        drb->groupStates[groupId].opacity = opacity;
+    }
+
+    drbBuffer->write(drb, drbBuffer->getSize());
     drbBuffer->bindAsUniformBuffer(DYNAMIC_RENDERING_BUFFER_BINDING);
+}
+
+static u32 convertToShaderHSV(const ccHSVValue& hsv) {
+    u32 hue = hsv.h + 256.f;
+    u32 sat = ( hsv.s + (hsv.absoluteSaturation ? 1.0 : 0.0) ) * 127.5f;
+    u32 val = ( hsv.v + (hsv.absoluteBrightness ? 1.0 : 0.0) ) * 127.5f;
+
+    u32 ret = (hue & HSV_HUE_MASK) << HSV_HUE_BIT |
+              (sat & HSV_SAT_MASK) << HSV_SAT_BIT |
+              (val & HSV_VAL_MASK) << HSV_VAL_BIT;
+
+    if (hsv.absoluteSaturation) ret |= HSV_SAT_ADD;
+    if (hsv.absoluteBrightness) ret |= HSV_VAL_ADD;
+    return ret;
 }
 
 void Renderer::generateStaticRenderingBuffer(ObjectSorter& sorter) {
@@ -241,6 +302,27 @@ void Renderer::generateStaticRenderingBuffer(ObjectSorter& sorter) {
             
             if (typeinfo_cast<RingObject*>(object))
                 objectInfo->flags |= OBJECT_FLAG_IS_ORB;
+        }
+
+        if (object->m_baseColor && object->m_baseColor->m_usesHSV) {
+            objectInfo->flags |= OBJECT_FLAG_HAS_BASE_HSV;
+            objectInfo->baseHSV = convertToShaderHSV(object->m_baseColor->m_hsv);
+        }
+
+        if (object->m_detailColor && object->m_detailColor->m_usesHSV) {
+            objectInfo->flags |= OBJECT_FLAG_HAS_DETAIL_HSV;
+            objectInfo->detailHSV = convertToShaderHSV(object->m_detailColor->m_hsv);
+        }
+
+        memset(objectInfo->groupIds, 0, sizeof(objectInfo->groupIds));
+
+        for (i32 i = 0; i < object->m_groupCount; i++) {
+            auto dstGroupId = &objectInfo->groupIds[i >> 1];
+            auto groupId = object->m_groups->at(i);
+            if ((i & 1) == 0)
+                *dstGroupId |= groupId;
+            else
+                *dstGroupId |= groupId << 16;
         }
 
         if (object->m_isInvisibleBlock) objectInfo->flags |= OBJECT_FLAG_IS_INVISIBLE_BLOCK;
@@ -280,14 +362,6 @@ void Renderer::draw() {
     glGetQueryObjecti64v(50, GL_QUERY_RESULT, &renderTime);
 }
 
-static std::string byteSizeToString(usize size) {
-    std::string unit = "B";
-    double dsize = size;
-    if (dsize > 1000.0) { dsize /= 1000.0; unit = "kB"; }
-    if (dsize > 1000.0) { dsize /= 1000.0; unit = "MB"; }
-    return fmt::format("{:.3f}{}", dsize, unit);
-}
-
 void Renderer::updateDebugText() {
     if (!enabled) {
         debugText->setString("Bismuth renderer is disabled\nPress F8 to enable");
@@ -306,6 +380,7 @@ void Renderer::updateDebugText() {
         text += fmt::format("Render time: {}ms\n", (double)renderTime / 1000000.0);
         text += fmt::format("Vertex buffer size: {}\n", byteSizeToString(objectBatch.getQuadCount() * sizeof(ObjectQuad)));
         text += fmt::format("Static rendering buffer size: {}\n", byteSizeToString(srbBuffer->getSize()));
+        text += fmt::format("Dynamic rendering buffer size: {}\n", byteSizeToString(drbBuffer->getSize()));
         text += "\n";
         text += "Press F3 to hide this screen";
     }
@@ -354,6 +429,23 @@ void Renderer::setEnabled(bool enabled) {
     updateDebugText();
 }
 
+void Renderer::moveGroup(i32 groupId, float deltaX, float deltaY) {
+    drb->groupStates[groupId].offset += glm::vec2(deltaX, deltaY);
+}
+
+void Renderer::toggleGroup(i32 groupId, bool visible) {
+    if (visible)
+        disabledGroups.erase(groupId);
+    else
+        disabledGroups.insert(groupId);
+}
+
+void Renderer::resetGroups() {
+    for (i32 i = 0; i < groupStateCount; i++)
+        drb->groupStates[i].offset = glm::vec2(0, 0);
+    disabledGroups.clear();
+}
+
 #include <Geode/modify/PlayLayer.hpp>
 class $modify(RendererPlayLayer, PlayLayer) {
     void setupHasCompleted() {
@@ -369,6 +461,14 @@ class $modify(RendererPlayLayer, PlayLayer) {
         if (renderer)
             batchLayer->addChild(renderer);
     }
+
+    void resetLevel() {
+        PlayLayer::resetLevel();
+
+        auto renderer = Renderer::get();
+        if (renderer)
+            renderer->resetGroups();
+    }
 };
 
 #include <Geode/modify/GJBaseGameLayer.hpp>
@@ -378,6 +478,39 @@ class $modify(RendererGJBaseGameLayer, GJBaseGameLayer) {
         auto renderer = Renderer::get();
         if (renderer)
             renderer->update(dt);
+    }
+
+    void processMoveActions() {
+        auto renderer = Renderer::get();
+        if (renderer == nullptr) {
+            GJBaseGameLayer::processMoveActions();
+            return;
+        }
+
+        m_effectManager->processMoveCalculations();
+        for (auto node : m_effectManager->m_unkVector6c0) {
+            if (node->m_unk0d0)
+                continue;
+
+            int groupId = node->getTag();
+
+            renderer->moveGroup(groupId, node->m_unk038, node->m_unk040);
+
+            CCArray* objects = getStaticGroup(groupId);
+            if (objects)
+                moveObjects(objects, node->m_unk038, node->m_unk040, 0);
+
+            objects = getOptimizedGroup(groupId);
+            if (objects)
+                moveObjects(objects, node->m_unk090, node->m_unk098, 0);
+        }
+    }
+
+    void toggleGroup(int id, bool activate) {
+        GJBaseGameLayer::toggleGroup(id, activate);
+        auto renderer = Renderer::get();
+        if (renderer)
+            renderer->toggleGroup(id, activate);
     }
 };
 

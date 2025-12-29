@@ -6,7 +6,7 @@
 layout (location = 0) in vec2 a_positionOffset;
 layout (location = 1) in vec2 a_texCoord;
 layout (location = 2) in int  a_srbIndex;
-layout (location = 3) in int  a_colorChannel;
+layout (location = 3) in uint a_colorChannel;
 layout (location = 4) in int  a_spriteSheet;
 layout (location = 5) in int  a_opacity;
 
@@ -31,7 +31,8 @@ layout (std430, binding = DYNAMIC_RENDERING_BUFFER_BINDING) uniform DRB {
 };
 
 layout (std430, binding = STATIC_RENDERING_BUFFER_BINDING) buffer SRB {
-    StaticRenderingBuffer srb;
+    // StaticRenderingBuffer srb;
+    StaticObjectInfo objects[];
 };
 
 //// TRANSFER VARIABLES ////
@@ -40,18 +41,25 @@ flat out int t_spriteSheet;
 out vec4 t_color;
 flat out uint t_blending;
 
-#define SRB_OBJECT (srb.objects[a_srbIndex])
+#define SRB_OBJECT (objects[a_srbIndex])
 
 //// GLOBALS ////
 uint objectFlags;
 vec2 objectPosition;
+// CURRENT GROUP STATE
+float groupOpacity = 1.0;
+vec2  groupOffset  = vec2(0.0, 0.0);
 
 //// HELPER FUNCTION PREDECLARATIONS ////
 float calculateAudioScale();
 vec4 calculateInvisibleBlockColorAndOpacity(vec4 color);
+void calculateObjectGroupState();
+vec4 applyHSV(HSV hsvValue, vec4 color);
 
 //// MAIN FUNCTION ////
 void main() {
+    calculateObjectGroupState();
+
     //// CALCULATING VERTEX POSITION ////
 
     vec2 position = a_positionOffset;
@@ -59,7 +67,9 @@ void main() {
     objectFlags    = SRB_OBJECT.flags;
     objectPosition = SRB_OBJECT.objectPosition;
 
-    if (SRB_OBJECT.rotationSpeed != 0.0)
+    objectPosition += groupOffset;
+
+    if (SRB_OBJECT.rotationSpeed != 0.0) // TODO: Just supply rotation speed in radians instead
         position = rotatePointAroundOrigin(position, -SRB_OBJECT.rotationSpeed * u_timer / 180 * PI);
 
     if ((objectFlags & OBJECT_FLAG_USES_AUDIO_SCALE) != 0)
@@ -70,14 +80,16 @@ void main() {
 
     //// TRANSFERING VARIABLES TO FRAGMENT SHADER ////
 
+    uint colorChannel = a_colorChannel & 0xfff;
+
     t_texCoord    = a_texCoord;
     t_spriteSheet = a_spriteSheet;
-    t_color       = RGBA_TO_VEC4(drb.channelColors[a_colorChannel]);
+    t_color       = RGBA_TO_VEC4(drb.channelColors[colorChannel]);
 
     if (a_spriteSheet == SPRITE_SHEET_GLOW && (objectFlags & OBJECT_FLAG_SPECIAL_GLOW_COLOR) != 0)
         t_color = vec4(u_specialLightBGColor, 1.0);
 
-    t_blending = BITMAP_GET(drb.colorChannelBlendingBitmap, a_colorChannel);
+    t_blending = BITMAP_GET(drb.colorChannelBlendingBitmap, colorChannel);
     if (a_spriteSheet == SPRITE_SHEET_GLOW)
         t_blending = 1;
 
@@ -85,6 +97,16 @@ void main() {
 
     if ((objectFlags & OBJECT_FLAG_IS_INVISIBLE_BLOCK) != 0)
         t_color = calculateInvisibleBlockColorAndOpacity(t_color);
+
+    if ((a_colorChannel & A_COLOR_CHANNEL_IS_SPRITE_DETAIL) == 0) {
+        if ((objectFlags & OBJECT_FLAG_HAS_BASE_HSV) != 0)
+            t_color = applyHSV(SRB_OBJECT.baseHSV, t_color);
+    } else {
+        if ((objectFlags & OBJECT_FLAG_HAS_DETAIL_HSV) != 0)
+            t_color = applyHSV(SRB_OBJECT.detailHSV, t_color);
+    }
+
+    t_color.a *= groupOpacity;
 }
 
 //// HELPER FUNCTIONS ////
@@ -174,4 +196,95 @@ vec4 calculateInvisibleBlockColorAndOpacity(vec4 color) {
     }
 
     return color;
+}
+
+void applyGroupState(uint groupId) {
+    GroupState state = drb.groupStates[groupId];
+    groupOpacity *= state.opacity;
+    groupOffset  += state.offset;
+}
+
+void calculateObjectGroupState() {
+    uint id;
+    uint elem;
+
+    elem = SRB_OBJECT.groupIds[0];
+    id = GET_LOW16(elem);
+    if (id != 0) applyGroupState(id);
+    else return;
+    id = GET_HIGH16(elem);
+    if (id != 0) applyGroupState(id);
+    else return;
+
+    elem = SRB_OBJECT.groupIds[1];
+    id = GET_LOW16(elem);
+    if (id != 0) applyGroupState(id);
+    else return;
+    id = GET_HIGH16(elem);
+    if (id != 0) applyGroupState(id);
+    else return;
+
+    elem = SRB_OBJECT.groupIds[2];
+    id = GET_LOW16(elem);
+    if (id != 0) applyGroupState(id);
+    else return;
+    id = GET_HIGH16(elem);
+    if (id != 0) applyGroupState(id);
+    else return;
+
+    elem = SRB_OBJECT.groupIds[3];
+    id = GET_LOW16(elem);
+    if (id != 0) applyGroupState(id);
+    else return;
+    id = GET_HIGH16(elem);
+    if (id != 0) applyGroupState(id);
+    else return;
+
+    elem = SRB_OBJECT.groupIds[4];
+    id = GET_LOW16(elem);
+    if (id != 0) applyGroupState(id);
+    else return;
+    id = GET_HIGH16(elem);
+    if (id != 0) applyGroupState(id);
+    else return;
+}
+
+// Credits to sam hocevar for the following two functions
+vec3 rgb2hsv(vec3 c) {
+    vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
+    vec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g));
+    vec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r));
+    float d = q.x - min(q.w, q.y);
+    float e = 1.0e-10;
+    return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);
+}
+
+vec3 hsv2rgb(vec3 c) {
+    vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+    vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+    return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+}
+
+vec4 applyHSV(HSV hsvValue, vec4 color) {
+    float hue = float(int((hsvValue >> HSV_HUE_BIT) & HSV_HUE_MASK) - 256) / 360.0;
+    float sat = float((hsvValue >> HSV_SAT_BIT) & HSV_SAT_MASK) / 127.5;
+    float val = float((hsvValue >> HSV_VAL_BIT) & HSV_VAL_MASK) / 127.5;
+    
+    vec3 hsv = rgb2hsv(color.rgb);
+
+    hsv.x = mod(hsv.x + hue, 1.0);
+
+    if ((hsvValue & HSV_SAT_ADD) != 0)
+        hsv.y += sat - 1.0;
+    else
+        hsv.y *= sat;
+
+    if ((hsvValue & HSV_VAL_ADD) != 0)
+        hsv.z += val - 1.0;
+    else
+        hsv.z *= val;
+
+    hsv.y = clamp(hsv.y, 0.0, 1.0);
+    hsv.z = clamp(hsv.z, 0.0, 1.0);
+    return vec4(hsv2rgb(hsv), color.a);
 }

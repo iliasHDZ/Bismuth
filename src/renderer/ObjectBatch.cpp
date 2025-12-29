@@ -225,6 +225,9 @@ void ObjectBatch::writeSprite(
         if (type == SpriteType::GLOW && object->m_glowColorIsLBG)
             colorChannel = COLOR_CHANNEL_LBG;
 
+        if (type == SpriteType::COLOR)
+            colorChannel |= A_COLOR_CHANNEL_IS_SPRITE_DETAIL;
+
         DEBUG_LOG("  - {} {}SPRITE {}", spriteTypeToString(type), isSpriteBlack ? "BLACK " : "", (void*)sprite);
 
         DEBUG_LOG("    {:.2f}, {:.2f}, {:.2f}", transform.a, transform.c, transform.tx);

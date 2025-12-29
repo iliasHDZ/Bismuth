@@ -8,48 +8,11 @@ using namespace geode::prelude;
 
 #include <Geode/modify/GJBaseGameLayer.hpp>
 class $modify(MyGJBaseGameLayer, GJBaseGameLayer) {
-    void moveObjects(cocos2d::CCArray* objects, double moveX, double moveY, bool unused) {
-        const char* name = "GJBaseGameLayer::moveObjects";
-        profiler::functionPush(name);
-
-        if (objects == nullptr) {
-            profiler::functionPop(name);
-            return;
-        }
-
-        cocos2d::CCObject* obj;
-        CCARRAY_FOREACH(objects, obj) {
-            GameObject* object = (GameObject*)obj;
-
-            /*
-            if (object->m_objectType == GameObjectType::Decoration)
-                continue;
-            */
-
-            if (!object->m_isDecoration2 && object->m_unk4C4 != m_gameState.m_unkUint2) {
-                object->m_unk4C4 = m_gameState.m_unkUint2;
-
-                object->m_lastPosition.x = object->m_positionX;
-                object->m_lastPosition.y = object->m_positionY;
-                object->dirtifyObjectRect();
-            }
-
-            if (moveX != 0.0 && !object->m_tempOffsetXRelated)
-                object->m_positionX += moveX;
-            if (moveY != 0.0)
-                object->m_positionY += moveY;
-                
-            object->dirtifyObjectPos();
-            updateObjectSection(object);
-        }
-
-        updateDisabledObjectsLastPos(objects);
-        profiler::functionPop(name);
-    }
-
+    /*
     void processMoveActions() {
         ((decomp_GJBaseGameLayer*)this)->processMoveActions();
     }
+    */
 };
 
 static bool decompEnabled = false;

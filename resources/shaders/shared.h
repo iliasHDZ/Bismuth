@@ -19,7 +19,7 @@
 struct alignas(4) RGBA { u8 r, g, b, a; };
 
 // In GLSL, these defines are set by the renderer
-#define TOTAL_GROUP_COUNT  0
+#define GROUP_ID_LIMIT     0
 #define TOTAL_OBJECT_COUNT 0
 
 #else
@@ -58,16 +58,23 @@ vec2 rotatePointAroundOrigin(vec2 point, float angleInRadians) {
 
 #define BITMAP_GET(B, I) ( ( (B)[(I) >> 5] >> ((I) & 0x1f) ) & 1 )
 
+#define GET_LOW16(V)  ( (V)       & 0xffff )
+#define GET_HIGH16(V) ( (V >> 16) & 0xffff )
+
 #endif
 
 #define COLOR_CHANNEL_COUNT  1101
 #define GROUP_IDS_PER_OBJECT 10
+
+#define A_COLOR_CHANNEL_IS_SPRITE_DETAIL 0x1000
 
 #define OBJECT_FLAG_USES_AUDIO_SCALE   (1 << 0)
 #define OBJECT_FLAG_CUSTOM_AUDIO_SCALE (1 << 1)
 #define OBJECT_FLAG_IS_ORB             (1 << 2)
 #define OBJECT_FLAG_IS_INVISIBLE_BLOCK (1 << 3)
 #define OBJECT_FLAG_SPECIAL_GLOW_COLOR (1 << 4)
+#define OBJECT_FLAG_HAS_BASE_HSV       (1 << 5)
+#define OBJECT_FLAG_HAS_DETAIL_HSV     (1 << 6)
 
 #define GAME_STATE_IS_PLAYER_DEAD (1 << 0)
 
@@ -86,6 +93,17 @@ vec2 rotatePointAroundOrigin(vec2 point, float angleInRadians) {
 #define COLOR_CHANNEL_MG      1013
 #define COLOR_CHANNEL_MG2     1014
 
+#define HSV uint
+
+#define HSV_HUE_BIT  16
+#define HSV_HUE_MASK 0x1ff
+#define HSV_SAT_BIT  8
+#define HSV_SAT_MASK 0xff
+#define HSV_VAL_BIT  0
+#define HSV_VAL_MASK 0xff
+#define HSV_SAT_ADD  0x20000000
+#define HSV_VAL_ADD  0x10000000
+
 /*
     Rendering info of an object that never changes.
 */
@@ -97,11 +115,13 @@ struct StaticObjectInfo {
     float audioScaleMin;
     float audioScaleMax;
     float fadeMargin;
+    HSV baseHSV;
+    HSV detailHSV;
     /*
         GLSL does not support 16-bit integers.
         Instead, 2 group ids are fit into a uint.
     */
-    // uint groupIds[GROUP_IDS_PER_OBJECT / 2];
+    uint groupIds[GROUP_IDS_PER_OBJECT / 2];
 };
 
 /*
@@ -109,11 +129,13 @@ struct StaticObjectInfo {
     This info can change every frame.
 */
 struct GroupState {
+    vec2 offset;
     float opacity;
+    uint _padding;
 };
 
-#define DYNAMIC_RENDERING_BUFFER_BINDING 1
-#define STATIC_RENDERING_BUFFER_BINDING  2
+#define DYNAMIC_RENDERING_BUFFER_BINDING 0
+#define STATIC_RENDERING_BUFFER_BINDING  1
 
 /*
     This is the structure of the dynamic rendering
@@ -130,7 +152,7 @@ struct DynamicRenderingBuffer {
     */
     uint colorChannelBlendingBitmap[COLOR_CHANNEL_COUNT / 32 + 1];
 
-    GroupState groupStates[TOTAL_GROUP_COUNT];
+    GroupState groupStates[GROUP_ID_LIMIT];
 };
 
 /*
@@ -140,7 +162,7 @@ struct DynamicRenderingBuffer {
     Stuff like group ids of objects and object flags.
 */
 struct StaticRenderingBuffer {
-    StaticObjectInfo objects[TOTAL_OBJECT_COUNT];
+    StaticObjectInfo objects[1];
 };
 
 #ifndef GLSL
@@ -150,4 +172,5 @@ struct StaticRenderingBuffer {
 #undef vec4
 #undef bool
 #undef uint
+#undef HSV
 #endif

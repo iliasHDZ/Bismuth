@@ -5,6 +5,7 @@
 #include "ObjectSorter.hpp"
 #include "Shader.hpp"
 #include <unordered_map>
+#include <set>
 
 #include "../../resources/shaders/shared.h"
 #include "DifferenceMode.hpp"
@@ -34,11 +35,6 @@ private:
 public:
     void update(float dt) override;
 
-    inline void toggleDebugText() {
-        if (enabled)
-            debugText->setVisible(!debugText->isVisible());
-    }
-
     inline cocos2d::CCTexture2D* getSpriteSheetTexture(SpriteSheet sheet) {
         if ((i32)sheet < 0 || (i32)sheet >= (i32)SpriteSheet::COUNT)
             return nullptr;
@@ -60,9 +56,8 @@ public:
         return &differenceMode;
     }
 
-    inline bool isDebugTextEnabled() { return debugTextEnabled; }
-    inline void setDebugTextEnabled(bool enabled) {
-        debugTextEnabled = enabled;
+    inline void toggleDebugText() {
+        debugTextEnabled = !debugTextEnabled;
     }
 
     inline bool isDifferenceModeEnabled() { return differenceModeEnabled; }
@@ -71,6 +66,12 @@ public:
     }
 
     void setEnabled(bool enabled);
+
+    void moveGroup(i32 groupId, float deltaX, float deltaY);
+
+    void toggleGroup(i32 groupId, bool visible);
+
+    void resetGroups();
 
 public:
     static Ref<Renderer> create(PlayLayer* layer);
@@ -94,10 +95,13 @@ private:
 
     Ref<cocos2d::CCLabelBMFont> debugText;
 
+    std::set<i16> usedGroupIds;
+    std::set<i16> disabledGroups;
+
     ObjectBatch objectBatch;
     Shader* shader = nullptr;
 
-    DynamicRenderingBuffer drb = { 0 };
+    DynamicRenderingBuffer* drb = nullptr;
     Buffer* drbBuffer = nullptr;
 
     Buffer* srbBuffer = nullptr;
@@ -107,6 +111,7 @@ private:
 
     float gameTimer = 0.0;
 
+    i64 groupStateCount;
     i64 renderedGameObjectCount;
     i64 renderTime;
 };
