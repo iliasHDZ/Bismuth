@@ -65,6 +65,14 @@ public:
         differenceModeEnabled = enabled;
     }
 
+    inline bool canEnableDisableIngame() { return ingameEnableDisable; }
+
+    inline void setGJBGLUpdateTime(u64 time) {
+        gjbglUpdateTime = time;
+    }
+
+    bool useOptimizations();
+
     void setEnabled(bool enabled);
 
     void moveGroup(i32 groupId, float deltaX, float deltaY);
@@ -86,8 +94,14 @@ private:
     PlayLayer* layer;
 
     bool enabled = false;
-
     bool debugTextEnabled = false;
+    bool ingameEnableDisable = false;
+
+    u64 rendererStartTime = 0;
+
+    u64 drbGenerationTime = 0;
+    u64 drawFuncTime = 0;
+    u64 gjbglUpdateTime = 0;
 
     std::unordered_map<GameObject*, usize> objectSRBIndicies;
 
@@ -105,6 +119,9 @@ private:
     Buffer* drbBuffer = nullptr;
 
     Buffer* srbBuffer = nullptr;
+
+    RendererUniformBuffer uniforms;
+    Buffer* uniformBuffer = nullptr;
 
     bool differenceModeEnabled = false;
     DifferenceMode differenceMode;

@@ -10,21 +10,6 @@ layout (location = 3) in uint a_colorChannel;
 layout (location = 4) in int  a_spriteSheet;
 layout (location = 5) in int  a_opacity;
 
-//// UNIFORMS ////
-uniform mat4  u_mvp;
-uniform float u_timer;
-uniform float u_audioScale;
-uniform vec2  u_cameraPosition;
-uniform float u_cameraWidth;
-
-// Used for invisible block calculation
-uniform vec2  u_winSize;
-uniform float u_screenRight;
-uniform float u_cameraUnzoomedX;
-uniform vec3  u_specialLightBGColor;
-
-uniform uint  u_gameStateFlags;
-
 //// UNIFORM and STORAGE BUFFERS ////
 layout (std430, binding = DYNAMIC_RENDERING_BUFFER_BINDING) uniform DRB {
     DynamicRenderingBuffer drb;
@@ -68,6 +53,18 @@ void main() {
     objectPosition = SRB_OBJECT.objectPosition;
 
     objectPosition += groupOffset;
+
+    /*
+    vec2 cameraCenterPos = u_cameraPosition + u_cameraViewSize * 0.5;
+    vec2 cameraCenterVectorToObjectPosition = objectPosition - cameraCenterPos;
+    float distanceSquared = cameraCenterVectorToObjectPosition.x * cameraCenterVectorToObjectPosition.x +
+                            cameraCenterVectorToObjectPosition.y * cameraCenterVectorToObjectPosition.y;
+
+    if (distanceSquared > 500*500) {
+        gl_Position = vec4(5.0, 5.0, 5.0, 1.0);
+        return;
+    }
+    */
 
     if (SRB_OBJECT.rotationSpeed != 0.0) // TODO: Just supply rotation speed in radians instead
         position = rotatePointAroundOrigin(position, -SRB_OBJECT.rotationSpeed * u_timer / 180 * PI);
@@ -126,7 +123,7 @@ float calculateAudioScale() {
 }
 
 float getRelativeMod(float xPos, float left, float right, float offset) {
-    float result = u_cameraWidth * 0.5;
+    float result = u_cameraViewSize.x * 0.5;
 
     if (xPos > result + u_cameraPosition.x)
         result = (result - (xPos - offset - u_cameraPosition.x - result)) * right;

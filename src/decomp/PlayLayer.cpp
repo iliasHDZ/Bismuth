@@ -328,3 +328,9 @@ void decomp_PlayLayer::virtual_updateVisibility(float delta) {
     m_resetActiveObjects = false;
     m_blendingColors.clear(); // This might be wrong, idk. But it makes sense to me.
 }
+    
+void decomp_PlayLayer::optimized_updateVisibility(float delta) {
+    preUpdateVisibility(delta);
+    m_effectManager->processColors();
+    m_effectManager->calculateLightBGColor(m_effectManager->activeColorForIndex(COLOR_P1));
+}

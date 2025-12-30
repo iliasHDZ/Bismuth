@@ -1,6 +1,4 @@
 #include <Geode/Geode.hpp>
-#include <chrono>
-#include <iostream>
 #include <unordered_map>
 #include <vector>
 #include "common.hpp"
@@ -13,8 +11,6 @@
 #include <Geode/modify/LevelEditorLayer.hpp>
 #include <Geode/modify/CCSprite.hpp>
 
-#include "renderer/Renderer.hpp"
-
 bool takeSnapshotNextFrame = false;
 bool isTakingSnapshot      = false;
 
@@ -22,12 +18,6 @@ std::unordered_map<void*, i64> timeSpentInFunction;
 
 i64 lastFunctionTime;
 std::vector<void*> functionCallStack;
-
-std::chrono::steady_clock::time_point modStartTime;
-
-$on_mod(Loaded) {
-    modStartTime = std::chrono::high_resolution_clock::now();
-}
 
 class $modify(MyCCKeyboardDispatcher, cocos2d::CCKeyboardDispatcher) {
     bool dispatchKeyboardMSG(cocos2d::enumKeyCodes key, bool keyDown, bool p3) {
@@ -37,10 +27,6 @@ class $modify(MyCCKeyboardDispatcher, cocos2d::CCKeyboardDispatcher) {
         return cocos2d::CCKeyboardDispatcher::dispatchKeyboardMSG(key, keyDown, p3);
     }
 };
-
-static u64 getTime() {
-    return (std::chrono::high_resolution_clock::now() - modStartTime).count();
-}
 
 class $modify(MyCCDisplayLinkDirector, cocos2d::CCDisplayLinkDirector) {
     void mainLoop() {
@@ -121,6 +107,7 @@ void functionPop(const char* name) {
 
 }
 
+/*
 #include <Geode/modify/CCSprite.hpp>
 _PROFILER_HOOK_VOID(cocos2d::CCSprite, updateTransform);
 _PROFILER_HOOK_VOID(cocos2d::CCSprite, setColor, const cocos2d::ccColor3B&);
@@ -132,3 +119,4 @@ _PROFILER_HOOK_VOID(cocos2d::CCNodeRGBA, updateDisplayedColor, const cocos2d::cc
 
 #include <Geode/modify/CCSpriteBatchNode.hpp>
 _PROFILER_HOOK_VOID(cocos2d::CCSpriteBatchNode, draw);
+*/

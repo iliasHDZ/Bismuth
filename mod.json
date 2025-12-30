@@ -7,12 +7,16 @@
 		"ios": "2.2074"
 	},
 	"id": "iliashdz.bismuth",
-	"name": "Bismuth",
+	"name": "Bismuth Experimental",
 	"version": "v1.0.0",
 	"developer": "IliasHDZ",
-	"description": "The ultimate rendering optimization mod",
+	"description": "Rendering optimization mod",
 	"dependencies": {
 		"geode.node-ids": ">=v1.20.0"
+	},
+	"links": {
+		"source": "https://github.com/IliasHDZ/Bismuth",
+		"community": "https://discord.gg/B6H6ZVJx9C"
 	},
 	"resources": {
 		"files": [
@@ -27,6 +31,12 @@
 			"name": "Bismuth enabled",
 			"type": "bool",
 			"default": true
+		},
+		"ingame_enable": {
+			"name": "In-game enable/disable",
+			"type": "bool",
+			"default": false,
+			"description": "Allows you to enable and disable Bismuth while playing by pressing F8. It also allows you to use Difference Mode by pressing F9 (Difference Mode is very unstable).\n\n WARNING: This option effectively removes any optimization."
 		}
 	}
 }

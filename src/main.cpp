@@ -15,6 +15,8 @@ class $modify(MyGJBaseGameLayer, GJBaseGameLayer) {
     */
 };
 
+/*
+
 static bool decompEnabled = false;
 
 #include <Geode/modify/PlayLayer.hpp>
@@ -41,8 +43,6 @@ class $modify(OCCKeyboardDispatcher, cocos2d::CCKeyboardDispatcher) {
         return cocos2d::CCKeyboardDispatcher::dispatchKeyboardMSG(key, keyDown, isKeyRepeat);
     }
 };
-
-/*
 static int* a = nullptr;
 
 #include <Geode/modify/GameObject.hpp>

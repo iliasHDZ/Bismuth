@@ -13,6 +13,7 @@
 #define vec2 alignas(8)  glm::vec2
 #define vec3 alignas(16) glm::vec3
 #define vec4 alignas(16) glm::vec4
+#define mat4 alignas(16) glm::mat4
 #define bool alignas(4) bool
 #define uint unsigned int
 
@@ -136,6 +137,7 @@ struct GroupState {
 
 #define DYNAMIC_RENDERING_BUFFER_BINDING 0
 #define STATIC_RENDERING_BUFFER_BINDING  1
+#define RENDERER_UNIFORM_BUFFER_BINDING  2
 
 /*
     This is the structure of the dynamic rendering
@@ -163,6 +165,26 @@ struct DynamicRenderingBuffer {
 */
 struct StaticRenderingBuffer {
     StaticObjectInfo objects[1];
+};
+
+#ifdef GLSL
+layout (std430, binding = RENDERER_UNIFORM_BUFFER_BINDING) uniform RendererUniformBuffer {
+#else
+struct RendererUniformBuffer {
+#endif
+    mat4  u_mvp;
+    float u_timer;
+    float u_audioScale;
+    vec2  u_cameraPosition;
+    vec2  u_cameraViewSize;
+
+    // Used for invisible block calculation
+    vec2  u_winSize;
+    float u_screenRight;
+    float u_cameraUnzoomedX;
+    vec3  u_specialLightBGColor;
+
+    uint  u_gameStateFlags;
 };
 
 #ifndef GLSL

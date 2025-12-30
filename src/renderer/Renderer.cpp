@@ -1,14 +1,19 @@
 #include "Renderer.hpp"
 #include "Geode/cocos/CCDirector.h"
+#include "Geode/cocos/kazmath/include/kazmath/mat4.h"
 #include "Geode/cocos/platform/win32/CCGL.h"
 #include "ccTypes.h"
 #include "common.hpp"
+#include "decomp/PlayLayer.hpp"
+#include <Geode/Enums.hpp>
 #include <Geode/binding/GJBaseGameLayer.hpp>
 #include <Geode/binding/RingObject.hpp>
 
 using namespace geode::prelude;
 
 static Renderer* currentRenderer;
+
+static u64 totalFrameTime = 0;
 
 Renderer::~Renderer() { terminate(); }
 
@@ -67,9 +72,8 @@ bool Renderer::init(PlayLayer* layer) {
 
     groupStateCount = 1;
 
-    log::info("Sorting objects...");
-
     log::info("Level contains {} object(s)", layer->m_objects->count());
+    log::info("Sorting objects...");
     for (auto object : CCArrayExt<GameObject*>(layer->m_objects)) {
         if (object == layer->m_anticheatSpike) {
             DEBUG_LOG("- anti-cheat spike");
@@ -114,8 +118,6 @@ bool Renderer::init(PlayLayer* layer) {
 
     generateStaticRenderingBuffer(sorter);
 
-    log::info("rtyhs {}", byteSizeToString(srbBuffer->getSize()));
-
     log::info("Generating vertex buffer...");
 
     objectBatch.allocateReservations();
@@ -134,13 +136,13 @@ bool Renderer::init(PlayLayer* layer) {
     if (!shader)
         return false;
 
-    log::info("fucn");
-
     drbBuffer = Buffer::createDynamicDraw(sizeof(DynamicRenderingBuffer) + sizeof(GroupState) * groupStateCount);
     if (!drbBuffer)
         return false;
 
-    log::info("zefzerg");
+    uniformBuffer = Buffer::createDynamicDraw(sizeof(RendererUniformBuffer));
+    if (!uniformBuffer)
+        return false;
 
     drb = (DynamicRenderingBuffer*)malloc(drbBuffer->getSize());
 
@@ -151,7 +153,12 @@ bool Renderer::init(PlayLayer* layer) {
     debugText->setScale(0.5);
     layer->addChild(debugText, 1000);
 
+    setZOrder(-2);
     setEnabled(true);
+
+    ingameEnableDisable = Mod::get()->getSettingValue<bool>("ingame_enable");
+
+    rendererStartTime = getTime();
 
     log::info("Renderer initialized");
     return true;
@@ -170,6 +177,9 @@ void Renderer::terminate() {
     if (srbBuffer)
         Buffer::destroy(srbBuffer);
 
+    if (uniformBuffer)
+        Buffer::destroy(uniformBuffer);
+
     currentRenderer = nullptr;
     log::info("Renderer terminated");
 }
@@ -186,36 +196,37 @@ void Renderer::prepareShaderUniforms() {
 	
 	kmMat4Multiply(&matrixMVP, &matrixP, &matrixMV);
 
-    shader->setFloat("u_timer", gameTimer);
-    shader->setMatrix4("u_mvp", matrixMVP.mat);
     shader->setTextureArray("u_spriteSheets", (i32)SpriteSheet::COUNT, spriteSheets);
-    shader->setVec2("u_cameraPosition", ccPointToGLM(layer->m_gameState.m_cameraPosition2));
-    shader->setFloat("u_cameraWidth", layer->m_cameraWidth);
+
+    (kmMat4&)uniforms.u_mvp = matrixMVP;
+    uniforms.u_timer = gameTimer;
+    uniforms.u_cameraPosition = ccPointToGLM(layer->m_gameState.m_cameraPosition2);
+    uniforms.u_cameraViewSize = glm::vec2(layer->m_cameraWidth, layer->m_cameraHeight);
     auto winsize = CCDirector::get()->getWinSize();
-    shader->setVec2("u_winSize", glm::vec2(winsize.width, winsize.height));
-    shader->setFloat("u_screenRight", CCDirector::get()->getScreenRight());
-    shader->setFloat("u_cameraUnzoomedX", layer->m_cameraUnzoomedX);
+    uniforms.u_winSize = glm::vec2(winsize.width, winsize.height);
+    uniforms.u_screenRight = CCDirector::get()->getScreenRight();
+    uniforms.u_cameraUnzoomedX = layer->m_cameraUnzoomedX;
     ccColor3B specialLightBG = GameToolbox::transformColor(layer->m_effectManager->activeColorForIndex(COLOR_CHANNEL_BG), 0.0, -0.2, 0.2);
-    shader->setVec3("u_specialLightBGColor", ccColor3BToGLM(specialLightBG));
+    uniforms.u_specialLightBGColor = ccColor3BToGLM(specialLightBG);
 
-    u32 gameStateFlags = 0;
+    uniforms.u_gameStateFlags = 0;
     if (layer->m_player1->m_isDead)
-        gameStateFlags |= GAME_STATE_IS_PLAYER_DEAD;
-    shader->setUInt("u_gameStateFlags", gameStateFlags);
+        uniforms.u_gameStateFlags |= GAME_STATE_IS_PLAYER_DEAD;
 
-    float audioScale;
     if (layer->m_skipAudioStep)
-        audioScale = FMODAudioEngine::sharedEngine()->getMeteringValue();
+        uniforms.u_audioScale = FMODAudioEngine::sharedEngine()->getMeteringValue();
     else
-        audioScale = layer->m_audioEffectsLayer->m_audioScale;
+        uniforms.u_audioScale = layer->m_audioEffectsLayer->m_audioScale;
     
     if (layer->m_isSilent || (layer->m_isPracticeMode && !layer->m_practiceMusicSync))
-        audioScale = 0.5;
+        uniforms.u_audioScale = 0.5;
 
-    shader->setFloat("u_audioScale", audioScale);
+    uniformBuffer->write(&uniforms, sizeof(RendererUniformBuffer));
+    uniformBuffer->bindAsUniformBuffer(RENDERER_UNIFORM_BUFFER_BINDING);
 }
 
 void Renderer::prepareDynamicRenderingBuffer() {
+    auto prevTime = getTime();
     auto effectManager = layer->m_effectManager;
 
     for (usize i = 0; i < effectManager->m_colorActionSpriteVector.size(); i++) {
@@ -257,6 +268,8 @@ void Renderer::prepareDynamicRenderingBuffer() {
 
     drbBuffer->write(drb, drbBuffer->getSize());
     drbBuffer->bindAsUniformBuffer(DYNAMIC_RENDERING_BUFFER_BINDING);
+
+    drbGenerationTime = getTime() - prevTime;
 }
 
 static u32 convertToShaderHSV(const ccHSVValue& hsv) {
@@ -338,7 +351,11 @@ void Renderer::generateStaticRenderingBuffer(ObjectSorter& sorter) {
 };
 
 void Renderer::draw() {
-    glBeginQuery(GL_TIME_ELAPSED, 50);
+    u64 prevTime = getTime();
+    
+    if (debugTextEnabled) {
+        // glBeginQuery(GL_TIME_ELAPSED, 50);
+    }
 
     storeGLStates();
 
@@ -353,22 +370,29 @@ void Renderer::draw() {
 
     objectBatch.draw();
 
-    if (debugText->isVisible())
-        updateDebugText();
-
     restoreGLStates();
     
-    glEndQuery(GL_TIME_ELAPSED);
-    glGetQueryObjecti64v(50, GL_QUERY_RESULT, &renderTime);
+    if (debugTextEnabled) {
+        renderTime = 0;
+        // glEndQuery(GL_TIME_ELAPSED);
+        // glGetQueryObjecti64v(50, GL_QUERY_RESULT, &renderTime);
+    }
+    drawFuncTime = getTime() - prevTime;
+
+    if (debugText->isVisible())
+        updateDebugText();
 }
 
 void Renderer::updateDebugText() {
+    std::string text = "";
+
     if (!enabled) {
-        debugText->setString("Bismuth renderer is disabled\nPress F8 to enable");
+        text += "Bismuth renderer is disabled\n";
+        text += fmt::format("Total frame time: {}ms\n", (double)totalFrameTime / 1000000.0);
+        text += "Press F8 to enable\n";
+        debugText->setString(text.c_str());
         return;
     }
-
-    std::string text = "F";
 
     if (debugTextEnabled) {
         auto screenSize = CCDirector::get()->getWinSizeInPixels();
@@ -378,12 +402,17 @@ void Renderer::updateDebugText() {
         text += fmt::format("{}\n", (const char*)glGetString(GL_RENDERER));
         text += fmt::format("Window: {}x{}\n", screenSize.width, screenSize.height);
         text += fmt::format("Render time: {}ms\n", (double)renderTime / 1000000.0);
+        text += fmt::format("DRB generation time: {}ms\n", (double)drbGenerationTime / 1000000.0);
+        text += fmt::format("Renderer::draw() time: {}ms\n", (double)drawFuncTime / 1000000.0);
+        text += fmt::format("GJBaseGameLayer::update() time: {}ms\n", (double)gjbglUpdateTime / 1000000.0);
+        text += fmt::format("Total frame time: {}ms\n", (double)totalFrameTime / 1000000.0);
         text += fmt::format("Vertex buffer size: {}\n", byteSizeToString(objectBatch.getQuadCount() * sizeof(ObjectQuad)));
         text += fmt::format("Static rendering buffer size: {}\n", byteSizeToString(srbBuffer->getSize()));
         text += fmt::format("Dynamic rendering buffer size: {}\n", byteSizeToString(drbBuffer->getSize()));
         text += "\n";
         text += "Press F3 to hide this screen";
-    }
+    } else if (differenceModeEnabled)
+        text += "_";
 
     debugText->setString(text.c_str());
 }
@@ -419,6 +448,13 @@ Ref<Renderer> Renderer::create(PlayLayer* layer) {
 
 Ref<Renderer> Renderer::get() {
     return currentRenderer;
+}
+
+bool Renderer::useOptimizations() {
+    if (canEnableDisableIngame())
+        return false;
+
+    return true;
 }
 
 void Renderer::setEnabled(bool enabled) {
@@ -469,15 +505,38 @@ class $modify(RendererPlayLayer, PlayLayer) {
         if (renderer)
             renderer->resetGroups();
     }
+
+    void updateVisibility(float dt) {
+        auto renderer = Renderer::get();
+        if (renderer && renderer->useOptimizations()) {
+            ((decomp_PlayLayer*)this)->optimized_updateVisibility(dt);
+            return;
+        }
+
+        PlayLayer::updateVisibility(dt);
+    }
 };
+
+static void removeDecoObjects(CCArray* array) {
+    for (u32 i = 0; i < array->count();) {
+        auto object = (GameObject*)array->objectAtIndex(i);
+        if (object->m_objectType == GameObjectType::Decoration)
+            array->removeObjectAtIndex(i);
+        else
+            i++;
+    }
+}
 
 #include <Geode/modify/GJBaseGameLayer.hpp>
 class $modify(RendererGJBaseGameLayer, GJBaseGameLayer) {
     void update(float dt) {
+        u64 time = getTime();
         GJBaseGameLayer::update(dt);
         auto renderer = Renderer::get();
-        if (renderer)
+        if (renderer) {
             renderer->update(dt);
+            renderer->setGJBGLUpdateTime(getTime() - time);
+        }
     }
 
     void processMoveActions() {
@@ -512,6 +571,19 @@ class $modify(RendererGJBaseGameLayer, GJBaseGameLayer) {
         if (renderer)
             renderer->toggleGroup(id, activate);
     }
+
+    void optimizeMoveGroups() {
+        GJBaseGameLayer::optimizeMoveGroups();
+
+        auto renderer = Renderer::get();
+        if (!renderer || !renderer->useOptimizations())
+            return;
+
+        for (auto array : m_optimizedGroups)
+            removeDecoObjects(array);
+        for (auto array : m_staticGroups)
+            removeDecoObjects(array);
+    }
 };
 
 #include <Geode/modify/CCKeyboardDispatcher.hpp>
@@ -521,13 +593,24 @@ class $modify(RendererCCKeyboardDispatcher, cocos2d::CCKeyboardDispatcher) {
         if (renderer) {
             if (keyDown && key == cocos2d::KEY_F3 && !isKeyRepeat)
                 renderer->toggleDebugText();
-            if (keyDown && key == cocos2d::KEY_F8 && !isKeyRepeat)
-                renderer->setEnabled(!renderer->isEnabled());
-            if (keyDown && key == cocos2d::KEY_F9 && !isKeyRepeat)
-                renderer->setDifferenceModeEnabled(!renderer->isDifferenceModeEnabled());
+            if (renderer->canEnableDisableIngame()) {
+                if (keyDown && key == cocos2d::KEY_F8 && !isKeyRepeat)
+                    renderer->setEnabled(!renderer->isEnabled());
+                if (keyDown && key == cocos2d::KEY_F9 && !isKeyRepeat)
+                    renderer->setDifferenceModeEnabled(!renderer->isDifferenceModeEnabled());
+            }
         }
 
         return cocos2d::CCKeyboardDispatcher::dispatchKeyboardMSG(key, keyDown, isKeyRepeat);
+    }
+};
+
+#include <Geode/modify/CCDisplayLinkDirector.hpp>
+class $modify(RendererCCDisplayLinkDirector, CCDisplayLinkDirector) {
+    void mainLoop() {
+        u64 prevTime = getTime();
+        CCDisplayLinkDirector::mainLoop();
+        totalFrameTime = getTime() - prevTime;
     }
 };
 

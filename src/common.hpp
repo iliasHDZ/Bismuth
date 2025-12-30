@@ -3,7 +3,7 @@
 #include "ccTypes.h"
 #include <glm/glm.hpp>
 #include <Geode/Geode.hpp>
-#include <filesystem>
+#include <chrono>
 
 #ifdef __GNUC__
 #define PACKED( __Declaration__ ) __Declaration__ __attribute__((__packed__))
@@ -42,4 +42,10 @@ inline vec2 ccPointToGLM(const cocos2d::CCPoint& point) {
 
 inline vec3 ccColor3BToGLM(const cocos2d::ccColor3B& color) {
     return vec3(color.r / 255.f, color.g / 255.f, color.b / 255.f);
+}
+
+extern std::chrono::steady_clock::time_point modStartTime;
+
+inline u64 getTime() {
+    return (std::chrono::high_resolution_clock::now() - modStartTime).count();
 }
