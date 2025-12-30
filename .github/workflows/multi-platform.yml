@@ -38,8 +38,8 @@ jobs:
 
       - name: Build the mod
         uses: geode-sdk/build-geode-mod@main
+        uses: textbook/git-checkout-submodule-action@master
         with:
-          args: git submodule update --init --recursive
           combine: true
           target: ${{ matrix.config.target }}
 
