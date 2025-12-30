@@ -330,7 +330,7 @@ void decomp_PlayLayer::virtual_updateVisibility(float delta) {
 }
     
 void decomp_PlayLayer::optimized_updateVisibility(float delta) {
-    preUpdateVisibility(delta);
+    // preUpdateVisibility(delta);
     m_effectManager->processColors();
     m_effectManager->calculateLightBGColor(m_effectManager->activeColorForIndex(COLOR_P1));
 }
