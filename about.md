@@ -1,9 +1,9 @@
 # Bismuth mod
 
-<cr>**WARNING: This mod is still in the experimental stage! Alot of
-levels will not display correctly. This mod should be percieved
-as something to experiment with rather than something to use
-in actual gameplay.**</c>
+<cr>**WARNING: This mod is still in the experimental stage and
+very buggy! Alot of levels will not display correctly. This mod
+should be percieved as something to experiment with rather than
+something to use in actual gameplay.**</c>
 
 A rendering optimization mod that serves to do alot of the level
 processing and rendering on the GPU instead without affecting
