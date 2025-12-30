@@ -11,3 +11,5 @@ gameplay.
 
 I am currently not accepting bugfixes as there is already alot
 of broken stuff to be fixed first.
+
+Icon created by Saryu
