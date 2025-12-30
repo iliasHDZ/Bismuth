@@ -2,8 +2,6 @@
 #include "Buffer.hpp"
 #include "Shader.hpp"
 
-#include <functional>
-
 class Renderer;
 
 class DifferenceMode {

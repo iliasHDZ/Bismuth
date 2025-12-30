@@ -28,20 +28,18 @@ add_library(${PROJECT_NAME} SHARED ${SOURCES})
 # Not sure about this...............
 set(CMAKE_BUILD_TYPE Release)
 
-# glm
+# Libraries
+set(ENABLE_OPT 0)
+set(ENABLE_GLSLANG_BINARIES OFF)
+
 include(FetchContent)
 FetchContent_Declare(
 	glm
 	GIT_REPOSITORY	https://github.com/g-truc/glm.git
 	GIT_TAG 	0af55ccecd98d4e5a8d1fad7de25ba429d60e863
 )
-FetchContent_MakeAvailable(glm)
-
-
-# glslang
-set(ENABLE_OPT 0)
-set(ENABLE_GLSLANG_BINARIES OFF)
-add_subdirectory(dep/glslang)
+FetchContent_Declare(glslang GIT_REPOSITORY https://github.com/KhronosGroup/glslang.git GIT_TAG vulkan-sdk-1.4.335)
+FetchContent_MakeAvailable(glm glslang)
 
 target_link_libraries(${PROJECT_NAME} glm::glm glslang::glslang)
 target_include_directories(${PROJECT_NAME} PRIVATE src)
