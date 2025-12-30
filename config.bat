@@ -1,1 +1,0 @@
-cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=TRUE -DCMAKE_C_COMPILER=C:\llvm\bin\clang.exe -DCMAKE_CXX_COMPILER=C:\llvm\bin\clang++.exe --no-warn-unused-cli -S C:/Users/benna/Desktop/Projects/Bismuth -B c:/Users/benna/Desktop/Projects/Bismuth/build -G Ninja
