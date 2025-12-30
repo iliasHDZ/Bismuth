@@ -39,7 +39,7 @@ jobs:
       - name: Build the mod
         uses: geode-sdk/build-geode-mod@main
         with:
-          submodules: true
+          submodules: recursive
           combine: true
           target: ${{ matrix.config.target }}
 
