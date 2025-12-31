@@ -164,26 +164,32 @@ void ObjectBatch::writeGameObject(GameObject* object) {
 
     SpriteSheet sheet = (SpriteSheet)object->getParentMode();
 
+    CCSprite* colorSprite = object->m_colorSprite;
+
     DEBUG_LOG("OBJECT {}", (void*)object);
     DEBUG_LOG("- isObjectBlack: {}", object->m_isObjectBlack);
     DEBUG_LOG("- isColorSpriteBlack: {}", object->m_isColorSpriteBlack);
     DEBUG_LOG("- hasColorSprite: {}", object->m_hasColorSprite);
-    DEBUG_LOG("- colorSprite: {}", (void*)object->m_colorSprite);
+    DEBUG_LOG("- colorSprite: {}", (void*)colorSprite);
     DEBUG_LOG("- activeMainColorID: {}", object->m_activeMainColorID);
     DEBUG_LOG("- activeDetailColorID: {}", object->m_activeDetailColorID);
     DEBUG_LOG("- opacityMod2: {}", object->m_opacityMod2);
     DEBUG_LOG("- srbIndex: {}", renderer->getObjectSRBIndex(object));
     DEBUG_LOG("- sprites:");
 
-    writeSprite(object, object, transform);
+    bool shouldWriteColorSprite = colorSprite && colorSprite->getParent() != object;
+    bool isColorSpriteInFront   = object->m_colorZLayerRelated;
 
-    // transform = CCAffineTransformConcat(transform, object->nodeToParentTransform());
-
-    if (object->m_glowSprite && object->m_glowSprite->getParent() != object)
+    if (object->m_glowSprite)
         writeSprite(object, object->m_glowSprite, transform);
 
-    if (object->m_colorSprite && object->m_colorSprite->getParent() != object)
-        writeSprite(object, object->m_colorSprite, transform);
+    if (shouldWriteColorSprite && !isColorSpriteInFront)
+        writeSprite(object, colorSprite, transform);
+
+    writeSprite(object, object, transform);
+
+    if (shouldWriteColorSprite && isColorSpriteInFront)
+        writeSprite(object, colorSprite, transform);
 
     object->setScaleX(originalScaleX);
     object->setScaleY(originalScaleY);
