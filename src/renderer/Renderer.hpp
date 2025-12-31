@@ -88,17 +88,6 @@ public:
 
     inline GroupManager& getGroupManager() { return groupManager; }
 
-    void moveGroup(i32 groupId, float deltaX, float deltaY);
-
-    void rotateGroup(
-        i32 groupId,
-        float angle,
-        bool lockObjectRotation,
-        std::optional<glm::vec2> centerPoint = std::nullopt
-    );
-
-    void toggleGroup(i32 groupId, bool visible);
-
     void reset();
 
 public:

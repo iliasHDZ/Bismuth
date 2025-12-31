@@ -80,7 +80,7 @@ bool Renderer::init(PlayLayer* layer) {
             continue;
         }
 
-        if (object->isTrigger())
+        if (object->isTrigger() || object->m_isHide)
             continue;
 
         DEBUG_LOG("- {}, id: {}", (void*)object, object->m_objectID);
@@ -264,16 +264,6 @@ void Renderer::prepareDynamicRenderingBuffer() {
 
     drb->channelColors[COLOR_CHANNEL_BLACK] = { 0, 0, 0, 255 };
 
-    /*
-    for (auto groupId : usedGroupIds) {
-        float opacity = 0.0;
-        if (!disabledGroups.contains(groupId))
-            opacity = layer->m_effectManager->opacityModForGroup(groupId);
-
-        drb->groupStates[groupId].opacity = opacity;
-    }
-    */
-
     groupManager.updateOpacities();
 
     drbBuffer->write(drb, drbBuffer->getSize());
@@ -339,19 +329,6 @@ void Renderer::generateStaticRenderingBuffer(ObjectSorter& sorter) {
             objectInfo->flags |= OBJECT_FLAG_HAS_DETAIL_HSV;
             objectInfo->detailHSV = convertToShaderHSV(object->m_detailColor->m_hsv);
         }
-
-        /*
-        memset(objectInfo->groupIds, 0, sizeof(objectInfo->groupIds));
-
-        for (i32 i = 0; i < object->m_groupCount; i++) {
-            auto dstGroupId = &objectInfo->groupIds[i >> 1];
-            auto groupId = object->m_groups->at(i);
-            if ((i & 1) == 0)
-                *dstGroupId |= groupId;
-            else
-            *dstGroupId |= groupId << 16;
-        }
-        */
 
         objectInfo->groupCombinationIndex = groupManager.getGroupCombinationIndexForObject(object);
 
@@ -481,45 +458,6 @@ void Renderer::setEnabled(bool enabled) {
         batch->setVisible(!enabled);
     updateDebugText();
 }
-
-/*
-void Renderer::moveGroup(i32 groupId, float deltaX, float deltaY) {
-    // TODO: Might wanna check if this is a valid group id
-    drb->groupStates[groupId].offset += glm::vec2(deltaX, deltaY);
-}
-
-void Renderer::rotateGroup(
-    i32 groupId,
-    float angle,
-    bool lockObjectRotation,
-    std::optional<glm::vec2> centerPoint
-) {
-    // TODO: Might wanna check if this is a valid group id
-    auto& groupState = drb->groupStates[groupId];
-
-    float cos = cosf(glm::radians(angle) * 0.5);
-    float sin = sinf(glm::radians(angle) * 0.5);
-    glm::mat2 matrix = {
-        { cos, -sin },
-        { sin,  cos }
-    };
-
-    groupState.localTransform *= matrix;
-    if (!centerPoint.has_value())
-        return;
-
-    auto center = centerPoint.value();
-    groupState.positionalTransform *= matrix;
-    // groupState.offset = matrix * (groupState.offset - center) + center;
-}
-
-void Renderer::toggleGroup(i32 groupId, bool visible) {
-    if (visible)
-        disabledGroups.erase(groupId);
-    else
-        disabledGroups.insert(groupId);
-}
-*/
 
 void Renderer::reset() {
     groupManager.resetGroupStates();
