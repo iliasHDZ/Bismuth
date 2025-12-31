@@ -13,6 +13,8 @@
 #define vec2 alignas(8)  glm::vec2
 #define vec3 alignas(16) glm::vec3
 #define vec4 alignas(16) glm::vec4
+#define mat2 alignas(8)  glm::mat2
+#define mat3 alignas(16) glm::mat3
 #define mat4 alignas(16) glm::mat4
 #define bool alignas(4) bool
 #define uint unsigned int
@@ -118,18 +120,16 @@ struct StaticObjectInfo {
     float fadeMargin;
     HSV baseHSV;
     HSV detailHSV;
-    /*
-        GLSL does not support 16-bit integers.
-        Instead, 2 group ids are fit into a uint.
-    */
-    uint groupIds[GROUP_IDS_PER_OBJECT / 2];
+    uint groupCombinationIndex;
 };
 
 /*
-    The current state of a group.
+    The current state of a group combination.
     This info can change every frame.
 */
-struct GroupState {
+struct GroupCombinationState {
+    mat2 positionalTransform;
+    mat2 localTransform;
     vec2 offset;
     float opacity;
     uint _padding;
@@ -154,7 +154,7 @@ struct DynamicRenderingBuffer {
     */
     uint colorChannelBlendingBitmap[COLOR_CHANNEL_COUNT / 32 + 1];
 
-    GroupState groupStates[GROUP_ID_LIMIT];
+    GroupCombinationState groupCombinationStates[GROUP_ID_LIMIT];
 };
 
 /*
@@ -192,6 +192,9 @@ struct RendererUniformBuffer {
 #undef vec2
 #undef vec3
 #undef vec4
+#undef mat2
+#undef mat3
+#undef mat4
 #undef bool
 #undef uint
 #undef HSV

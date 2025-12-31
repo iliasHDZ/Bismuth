@@ -1,21 +1,24 @@
 #pragma once
 
+#include <Geode/binding/GameObject.hpp>
 #include <common.hpp>
 #include "ObjectBatch.hpp"
 #include "ObjectSorter.hpp"
 #include "Shader.hpp"
 #include <unordered_map>
+#include <optional>
 #include <set>
 
-#include "../../resources/shaders/shared.h"
 #include "DifferenceMode.hpp"
+#include "GroupManager.hpp"
+#include "../../resources/shaders/shared.h"
 
 using namespace geode;
 
 class Renderer : public cocos2d::CCNode {
 private:
     inline Renderer()
-        : objectBatch(this), differenceMode(*this) {}
+        : objectBatch(this), groupManager(*this), differenceMode(*this) {}
     ~Renderer() override;
 
     bool init(PlayLayer* layer);
@@ -31,6 +34,14 @@ private:
     void draw() override;
 
     void updateDebugText();
+
+protected:
+    inline GroupCombinationState* getGroupCombinationStates() {
+        if (drb == nullptr) return nullptr;
+        return drb->groupCombinationStates;
+    }
+
+    friend class GroupManager;
 
 public:
     void update(float dt) override;
@@ -75,11 +86,20 @@ public:
 
     void setEnabled(bool enabled);
 
+    inline GroupManager& getGroupManager() { return groupManager; }
+
     void moveGroup(i32 groupId, float deltaX, float deltaY);
+
+    void rotateGroup(
+        i32 groupId,
+        float angle,
+        bool lockObjectRotation,
+        std::optional<glm::vec2> centerPoint = std::nullopt
+    );
 
     void toggleGroup(i32 groupId, bool visible);
 
-    void resetGroups();
+    void reset();
 
 public:
     static Ref<Renderer> create(PlayLayer* layer);
@@ -112,11 +132,14 @@ private:
     std::set<i16> usedGroupIds;
     std::set<i16> disabledGroups;
 
+    GroupManager groupManager;
+
     ObjectBatch objectBatch;
     Shader* shader = nullptr;
 
     DynamicRenderingBuffer* drb = nullptr;
     Buffer* drbBuffer = nullptr;
+    bool isDrbStorageBuffer;
 
     Buffer* srbBuffer = nullptr;
 

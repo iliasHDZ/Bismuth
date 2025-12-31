@@ -10,8 +10,14 @@ layout (location = 3) in uint a_colorChannel;
 layout (location = 4) in int  a_spriteSheet;
 layout (location = 5) in int  a_opacity;
 
+#ifdef IS_DRB_STORAGE_BUFFER
+#define DRB_BUFFER_KEYWORD buffer
+#else
+#define DRB_BUFFER_KEYWORD uniform
+#endif
+
 //// UNIFORM and STORAGE BUFFERS ////
-layout (std430, binding = DYNAMIC_RENDERING_BUFFER_BINDING) uniform DRB {
+layout (std430, binding = DYNAMIC_RENDERING_BUFFER_BINDING) DRB_BUFFER_KEYWORD DRB {
     DynamicRenderingBuffer drb;
 };
 
@@ -31,49 +37,39 @@ flat out uint t_blending;
 //// GLOBALS ////
 uint objectFlags;
 vec2 objectPosition;
-// CURRENT GROUP STATE
-float groupOpacity = 1.0;
-vec2  groupOffset  = vec2(0.0, 0.0);
+float objectOpacity = 1.0;
+vec2 vertexOffset;
 
 //// HELPER FUNCTION PREDECLARATIONS ////
 float calculateAudioScale();
 vec4 calculateInvisibleBlockColorAndOpacity(vec4 color);
-void calculateObjectGroupState();
+// void calculateObjectGroupState();
 vec4 applyHSV(HSV hsvValue, vec4 color);
 
 //// MAIN FUNCTION ////
 void main() {
-    calculateObjectGroupState();
-
     //// CALCULATING VERTEX POSITION ////
-
-    vec2 position = a_positionOffset;
-
+    
+    vertexOffset   = a_positionOffset;
     objectFlags    = SRB_OBJECT.flags;
     objectPosition = SRB_OBJECT.objectPosition;
+    // calculateObjectGroupState();
 
-    objectPosition += groupOffset;
+    // APPLY GROUP COMBINATION STATE
+    GroupCombinationState state = drb.groupCombinationStates[SRB_OBJECT.groupCombinationIndex];
+    objectOpacity *= state.opacity;
+    objectPosition = state.positionalTransform * objectPosition + state.offset;
+    vertexOffset   = state.localTransform      * vertexOffset;
 
-    /*
-    vec2 cameraCenterPos = u_cameraPosition + u_cameraViewSize * 0.5;
-    vec2 cameraCenterVectorToObjectPosition = objectPosition - cameraCenterPos;
-    float distanceSquared = cameraCenterVectorToObjectPosition.x * cameraCenterVectorToObjectPosition.x +
-                            cameraCenterVectorToObjectPosition.y * cameraCenterVectorToObjectPosition.y;
-
-    if (distanceSquared > 500*500) {
-        gl_Position = vec4(5.0, 5.0, 5.0, 1.0);
-        return;
-    }
-    */
+    objectOpacity *= float(a_opacity) / 255.0;
 
     if (SRB_OBJECT.rotationSpeed != 0.0) // TODO: Just supply rotation speed in radians instead
-        position = rotatePointAroundOrigin(position, -SRB_OBJECT.rotationSpeed * u_timer / 180 * PI);
+        vertexOffset = rotatePointAroundOrigin(vertexOffset, -SRB_OBJECT.rotationSpeed * u_timer / 180 * PI);
 
     if ((objectFlags & OBJECT_FLAG_USES_AUDIO_SCALE) != 0)
-        position *= calculateAudioScale();
+        vertexOffset *= calculateAudioScale();
 
-    position += objectPosition;
-    gl_Position = u_mvp * vec4(position, 0.0, 1.0);
+    gl_Position = u_mvp * vec4(objectPosition + vertexOffset, 0.0, 1.0);
 
     //// TRANSFERING VARIABLES TO FRAGMENT SHADER ////
 
@@ -90,8 +86,6 @@ void main() {
     if (a_spriteSheet == SPRITE_SHEET_GLOW)
         t_blending = 1;
 
-    t_color.a *= float(a_opacity) / 255.0;
-
     if ((objectFlags & OBJECT_FLAG_IS_INVISIBLE_BLOCK) != 0)
         t_color = calculateInvisibleBlockColorAndOpacity(t_color);
 
@@ -103,7 +97,7 @@ void main() {
             t_color = applyHSV(SRB_OBJECT.detailHSV, t_color);
     }
 
-    t_color.a *= groupOpacity;
+    t_color.a *= objectOpacity;
 }
 
 //// HELPER FUNCTIONS ////
@@ -195,10 +189,15 @@ vec4 calculateInvisibleBlockColorAndOpacity(vec4 color) {
     return color;
 }
 
+/*
 void applyGroupState(uint groupId) {
     GroupState state = drb.groupStates[groupId];
-    groupOpacity *= state.opacity;
-    groupOffset  += state.offset;
+    objectOpacity *= state.opacity;
+
+    // vec2 offset = state.offset - (objectPosition - SRB_OBJECT.objectPosition);
+
+    objectPosition = state.positionalTransform * (objectPosition - SRB_OBJECT.objectPosition) + state.offset + SRB_OBJECT.objectPosition;
+    vertexOffset   = state.localTransform      * vertexOffset;
 }
 
 void calculateObjectGroupState() {
@@ -245,6 +244,7 @@ void calculateObjectGroupState() {
     if (id != 0) applyGroupState(id);
     else return;
 }
+*/
 
 // Credits to sam hocevar for the following two functions
 vec3 rgb2hsv(vec3 c) {

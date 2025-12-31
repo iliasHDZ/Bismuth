@@ -5,9 +5,11 @@
 #include "ccTypes.h"
 #include "common.hpp"
 #include "decomp/PlayLayer.hpp"
+#include "glm/trigonometric.hpp"
 #include <Geode/Enums.hpp>
 #include <Geode/binding/GJBaseGameLayer.hpp>
 #include <Geode/binding/RingObject.hpp>
+#include <cmath>
 
 using namespace geode::prelude;
 
@@ -70,8 +72,6 @@ bool Renderer::init(PlayLayer* layer) {
     }
     */
 
-    groupStateCount = 1;
-
     log::info("Level contains {} object(s)", layer->m_objects->count());
     log::info("Sorting objects...");
     for (auto object : CCArrayExt<GameObject*>(layer->m_objects)) {
@@ -82,13 +82,6 @@ bool Renderer::init(PlayLayer* layer) {
 
         if (object->isTrigger())
             continue;
-
-        for (i32 i = 0; i < object->m_groupCount; i++) {
-            auto id = object->m_groups->at(i);
-            if ((id + 1) > groupStateCount)
-                groupStateCount = id + 1;
-            usedGroupIds.insert(id);
-        }
 
         DEBUG_LOG("- {}, id: {}", (void*)object, object->m_objectID);
         DEBUG_LOG("  - zlayer: {}", (i32)object->getObjectZLayer());
@@ -118,6 +111,9 @@ bool Renderer::init(PlayLayer* layer) {
 
     generateStaticRenderingBuffer(sorter);
 
+    u32 groupCombCount = groupManager.getGroupCombinationCount();
+    log::info("{} group combinations detected", groupCombCount);
+
     log::info("Generating vertex buffer...");
 
     objectBatch.allocateReservations();
@@ -127,8 +123,16 @@ bool Renderer::init(PlayLayer* layer) {
 
     std::map<std::string, std::string> shaderMacroVariables;
 
+    usize drbBufferSize = sizeof(DynamicRenderingBuffer) + sizeof(GroupCombinationState) * groupCombCount;
+
+    i32 maxUniformBufferSize;
+    glGetIntegerv(GL_MAX_UNIFORM_BLOCK_SIZE, &maxUniformBufferSize);
+    isDrbStorageBuffer = drbBufferSize > maxUniformBufferSize;
+
     shaderMacroVariables["TOTAL_OBJECT_COUNT"] = std::to_string(renderedGameObjectCount == 0 ? 1 : renderedGameObjectCount);
-    shaderMacroVariables["GROUP_ID_LIMIT"]     = std::to_string(groupStateCount);
+    shaderMacroVariables["GROUP_ID_LIMIT"]     = std::to_string(groupCombCount);
+    if (isDrbStorageBuffer)
+        shaderMacroVariables["IS_DRB_STORAGE_BUFFER"] = "";
 
     log::info("Compiling shaders...");
 
@@ -136,7 +140,7 @@ bool Renderer::init(PlayLayer* layer) {
     if (!shader)
         return false;
 
-    drbBuffer = Buffer::createDynamicDraw(sizeof(DynamicRenderingBuffer) + sizeof(GroupState) * groupStateCount);
+    drbBuffer = Buffer::createDynamicDraw(drbBufferSize);
     if (!drbBuffer)
         return false;
 
@@ -159,6 +163,8 @@ bool Renderer::init(PlayLayer* layer) {
     ingameEnableDisable = Mod::get()->getSettingValue<bool>("ingame_enable");
 
     rendererStartTime = getTime();
+
+    reset();
 
     log::info("Renderer initialized");
     return true;
@@ -258,6 +264,7 @@ void Renderer::prepareDynamicRenderingBuffer() {
 
     drb->channelColors[COLOR_CHANNEL_BLACK] = { 0, 0, 0, 255 };
 
+    /*
     for (auto groupId : usedGroupIds) {
         float opacity = 0.0;
         if (!disabledGroups.contains(groupId))
@@ -265,9 +272,15 @@ void Renderer::prepareDynamicRenderingBuffer() {
 
         drb->groupStates[groupId].opacity = opacity;
     }
+    */
+
+    groupManager.updateOpacities();
 
     drbBuffer->write(drb, drbBuffer->getSize());
-    drbBuffer->bindAsUniformBuffer(DYNAMIC_RENDERING_BUFFER_BINDING);
+    if (isDrbStorageBuffer)
+        drbBuffer->bindAsStorageBuffer(DYNAMIC_RENDERING_BUFFER_BINDING);
+    else
+        drbBuffer->bindAsUniformBuffer(DYNAMIC_RENDERING_BUFFER_BINDING);
 
     drbGenerationTime = getTime() - prevTime;
 }
@@ -327,6 +340,7 @@ void Renderer::generateStaticRenderingBuffer(ObjectSorter& sorter) {
             objectInfo->detailHSV = convertToShaderHSV(object->m_detailColor->m_hsv);
         }
 
+        /*
         memset(objectInfo->groupIds, 0, sizeof(objectInfo->groupIds));
 
         for (i32 i = 0; i < object->m_groupCount; i++) {
@@ -335,8 +349,11 @@ void Renderer::generateStaticRenderingBuffer(ObjectSorter& sorter) {
             if ((i & 1) == 0)
                 *dstGroupId |= groupId;
             else
-                *dstGroupId |= groupId << 16;
+            *dstGroupId |= groupId << 16;
         }
+        */
+
+        objectInfo->groupCombinationIndex = groupManager.getGroupCombinationIndexForObject(object);
 
         if (object->m_isInvisibleBlock) objectInfo->flags |= OBJECT_FLAG_IS_INVISIBLE_BLOCK;
         if (object->m_customGlowColor)  objectInfo->flags |= OBJECT_FLAG_SPECIAL_GLOW_COLOR;
@@ -465,8 +482,35 @@ void Renderer::setEnabled(bool enabled) {
     updateDebugText();
 }
 
+/*
 void Renderer::moveGroup(i32 groupId, float deltaX, float deltaY) {
+    // TODO: Might wanna check if this is a valid group id
     drb->groupStates[groupId].offset += glm::vec2(deltaX, deltaY);
+}
+
+void Renderer::rotateGroup(
+    i32 groupId,
+    float angle,
+    bool lockObjectRotation,
+    std::optional<glm::vec2> centerPoint
+) {
+    // TODO: Might wanna check if this is a valid group id
+    auto& groupState = drb->groupStates[groupId];
+
+    float cos = cosf(glm::radians(angle) * 0.5);
+    float sin = sinf(glm::radians(angle) * 0.5);
+    glm::mat2 matrix = {
+        { cos, -sin },
+        { sin,  cos }
+    };
+
+    groupState.localTransform *= matrix;
+    if (!centerPoint.has_value())
+        return;
+
+    auto center = centerPoint.value();
+    groupState.positionalTransform *= matrix;
+    // groupState.offset = matrix * (groupState.offset - center) + center;
 }
 
 void Renderer::toggleGroup(i32 groupId, bool visible) {
@@ -475,11 +519,10 @@ void Renderer::toggleGroup(i32 groupId, bool visible) {
     else
         disabledGroups.insert(groupId);
 }
+*/
 
-void Renderer::resetGroups() {
-    for (i32 i = 0; i < groupStateCount; i++)
-        drb->groupStates[i].offset = glm::vec2(0, 0);
-    disabledGroups.clear();
+void Renderer::reset() {
+    groupManager.resetGroupStates();
 }
 
 #include <Geode/modify/PlayLayer.hpp>
@@ -503,7 +546,7 @@ class $modify(RendererPlayLayer, PlayLayer) {
 
         auto renderer = Renderer::get();
         if (renderer)
-            renderer->resetGroups();
+            renderer->reset();
     }
 
     void updateVisibility(float dt) {
@@ -553,7 +596,7 @@ class $modify(RendererGJBaseGameLayer, GJBaseGameLayer) {
 
             int groupId = node->getTag();
 
-            renderer->moveGroup(groupId, node->m_unk038, node->m_unk040);
+            renderer->getGroupManager().moveGroup(groupId, node->m_unk038, node->m_unk040);
 
             CCArray* objects = getStaticGroup(groupId);
             if (objects)
@@ -565,11 +608,63 @@ class $modify(RendererGJBaseGameLayer, GJBaseGameLayer) {
         }
     }
 
+    void processRotationActions() {
+        auto renderer = Renderer::get();
+        if (renderer == nullptr) {
+            GJBaseGameLayer::processRotationActions();
+            return;
+        }
+
+        auto eman = m_effectManager;
+        for (auto cmdObj : eman->m_unkVector5b0) {
+            //log::info("yah {} {}", cmdObj->m_unkInt204, m_gameState.m_unkUint2);
+
+            if (/* cmdObj->m_unkInt204 != m_gameState.m_unkUint2 ||*/ cmdObj->m_someInterpValue1RelatedFalse)
+                continue;
+
+            i32 targetId = cmdObj->m_targetGroupID;
+            i32 centerId = cmdObj->m_centerGroupID;
+
+            auto mainObject = tryGetMainObject(centerId);
+            auto staticGroup = getStaticGroup(targetId);
+
+            float rotation;
+            if (staticGroup->count() != 0)
+                rotation = cmdObj->m_someInterpValue1RelatedOne - cmdObj->m_someInterpValue1RelatedZero;
+            else
+                rotation = cmdObj->m_someInterpValue2RelatedOne - cmdObj->m_someInterpValue2RelatedZero;
+
+            if (rotation == 0.0 && !cmdObj->m_finishRelated)
+                continue;
+
+            // Idk what the hell this does but sure
+            if (eman->m_unkMap770.find({ targetId, centerId }) != eman->m_unkMap770.end()) {
+                for (auto obj : eman->m_unkMap770[{ targetId, centerId }]) {
+                    if (obj->m_someInterpValue1RelatedFalse)
+                        continue;
+                    if (staticGroup->count() != 0)
+                        rotation += cmdObj->m_someInterpValue1RelatedOne - cmdObj->m_someInterpValue1RelatedZero;
+                    else
+                        rotation += cmdObj->m_someInterpValue2RelatedOne - cmdObj->m_someInterpValue2RelatedZero;
+                }
+            }
+
+            if (mainObject == nullptr)
+                renderer->getGroupManager().rotateGroup(targetId, rotation, cmdObj->m_lockObjectRotation);
+            else {
+                auto pos = mainObject->getUnmodifiedPosition();
+                renderer->getGroupManager().rotateGroup(targetId, rotation, cmdObj->m_lockObjectRotation, ccPointToGLM(pos));
+            }
+        }
+
+        GJBaseGameLayer::processRotationActions();
+    }
+
     void toggleGroup(int id, bool activate) {
         GJBaseGameLayer::toggleGroup(id, activate);
         auto renderer = Renderer::get();
         if (renderer)
-            renderer->toggleGroup(id, activate);
+            renderer->getGroupManager().toggleGroup(id, activate);
     }
 
     void optimizeMoveGroups() {
