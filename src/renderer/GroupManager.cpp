@@ -121,6 +121,7 @@ void GroupManager::resetGroupStates() {
 
 void GroupManager::addGroupCombination(GroupCombination& comb, GroupCombinationIndex index) {
     groupCombinationIndicies[comb] = index;
+    
 
     for (auto groupId : comb.getSpan()) {
         usedGroupIds.insert(groupId);
