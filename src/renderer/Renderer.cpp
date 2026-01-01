@@ -604,6 +604,34 @@ class $modify(RendererGJBaseGameLayer, GJBaseGameLayer) {
         GJBaseGameLayer::processRotationActions();
     }
 
+    void processFollowActions() {
+        auto renderer = Renderer::get();
+        if (renderer == nullptr) {
+            GJBaseGameLayer::processFollowActions();
+            return;
+        }
+
+        auto eman = m_effectManager;
+        for (auto node : eman->m_unkVector6d8) {
+            i32 targetGroupId = node->getTag();
+            i32 followGroupId = node->m_unk074;
+
+            auto mainObject = tryGetMainObject(followGroupId);
+            if (mainObject == nullptr)
+                continue;
+
+            double moveX = 0.0, moveY = 0.0;
+            if (mainObject->m_unk4C4 == m_gameState.m_unkUint2) {
+                moveX = (mainObject->m_positionX - mainObject->m_lastPosition.x) * node->m_unk080; /* followXMod */
+                moveY = (mainObject->m_positionY - mainObject->m_lastPosition.y) * node->m_unk088; /* followYMod */
+            }
+
+            renderer->getGroupManager().moveGroup(targetGroupId, moveX, moveY);
+        }
+
+        GJBaseGameLayer::processFollowActions();
+    }
+
     void toggleGroup(int id, bool activate) {
         GJBaseGameLayer::toggleGroup(id, activate);
         auto renderer = Renderer::get();
