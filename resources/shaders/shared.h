@@ -78,6 +78,7 @@ vec2 rotatePointAroundOrigin(vec2 point, float angleInRadians) {
 #define OBJECT_FLAG_SPECIAL_GLOW_COLOR (1 << 4)
 #define OBJECT_FLAG_HAS_BASE_HSV       (1 << 5)
 #define OBJECT_FLAG_HAS_DETAIL_HSV     (1 << 6)
+#define OBJECT_FLAG_IS_STATIC_OBJECT   (1 << 7)
 
 #define GAME_STATE_IS_PLAYER_DEAD (1 << 0)
 

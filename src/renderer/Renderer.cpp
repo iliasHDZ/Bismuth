@@ -5,11 +5,9 @@
 #include "ccTypes.h"
 #include "common.hpp"
 #include "decomp/PlayLayer.hpp"
-#include "glm/trigonometric.hpp"
 #include <Geode/Enums.hpp>
 #include <Geode/binding/GJBaseGameLayer.hpp>
 #include <Geode/binding/RingObject.hpp>
-#include <cmath>
 
 using namespace geode::prelude;
 
@@ -90,6 +88,7 @@ bool Renderer::init(PlayLayer* layer) {
         DEBUG_LOG("  - glowColorIsLBG: {}", object->m_glowColorIsLBG);
         DEBUG_LOG("  - customGlowColor: {}", object->m_customGlowColor);
         DEBUG_LOG("  - opacityMod: {}", object->m_opacityMod);
+        DEBUG_LOG("  - isDecoration2: {}", object->m_isDecoration2);
         if (object->m_baseColor && object->m_baseColor->m_usesHSV)
             DEBUG_LOG("  - baseHSV: {} {} {} {} {}", object->m_baseColor->m_hsv.h, object->m_baseColor->m_hsv.s, object->m_baseColor->m_hsv.v, object->m_baseColor->m_hsv.absoluteSaturation, object->m_baseColor->m_hsv.absoluteBrightness);
         if (object->m_detailColor && object->m_detailColor->m_usesHSV)
@@ -334,6 +333,8 @@ void Renderer::generateStaticRenderingBuffer(ObjectSorter& sorter) {
 
         if (object->m_isInvisibleBlock) objectInfo->flags |= OBJECT_FLAG_IS_INVISIBLE_BLOCK;
         if (object->m_customGlowColor)  objectInfo->flags |= OBJECT_FLAG_SPECIAL_GLOW_COLOR;
+        if (object->m_objectType == GameObjectType::Solid)
+            objectInfo->flags |= OBJECT_FLAG_IS_STATIC_OBJECT;
         objectInfo->fadeMargin = object->m_fadeMargin;
 
         objectSRBIndicies[object] = index;
@@ -463,7 +464,7 @@ void Renderer::reset() {
     groupManager.resetGroupStates();
 }
 
-bool newPlayLayer = false;
+static bool newPlayLayer = false;
 
 #include <Geode/modify/PlayLayer.hpp>
 class $modify(RendererPlayLayer, PlayLayer) {
@@ -473,6 +474,7 @@ class $modify(RendererPlayLayer, PlayLayer) {
         newPlayLayer = false;
     }
 
+    // This gets called from inside PlayLayer::setupHasCompleted()
     void resetLevel() {
         if (newPlayLayer) {
             auto batchLayer = this->m_objectLayer;

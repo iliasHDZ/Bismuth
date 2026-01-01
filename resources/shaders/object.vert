@@ -59,7 +59,8 @@ void main() {
     GroupCombinationState state = drb.groupCombinationStates[SRB_OBJECT.groupCombinationIndex];
     objectOpacity *= state.opacity;
     objectPosition = state.positionalTransform * objectPosition + state.offset;
-    vertexOffset   = state.localTransform      * vertexOffset;
+    if ((objectFlags & OBJECT_FLAG_IS_STATIC_OBJECT) == 0)
+        vertexOffset = state.localTransform * vertexOffset;
 
     objectOpacity *= float(a_opacity) / 255.0;
 
