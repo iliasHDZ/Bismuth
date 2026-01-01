@@ -463,23 +463,29 @@ void Renderer::reset() {
     groupManager.resetGroupStates();
 }
 
+bool newPlayLayer = false;
+
 #include <Geode/modify/PlayLayer.hpp>
 class $modify(RendererPlayLayer, PlayLayer) {
     void setupHasCompleted() {
+        newPlayLayer = true;
         PlayLayer::setupHasCompleted();
-        
-        auto batchLayer = this->m_objectLayer;
-        if (!batchLayer) {
-            log::error("failed to attach renderer: batch layer not found");
-            return;
-        }
-
-        auto renderer = Renderer::create(this);
-        if (renderer)
-            batchLayer->addChild(renderer);
+        newPlayLayer = false;
     }
 
     void resetLevel() {
+        if (newPlayLayer) {
+            auto batchLayer = this->m_objectLayer;
+            if (!batchLayer) {
+                log::error("failed to attach renderer: batch layer not found");
+                return;
+            }
+
+            auto renderer = Renderer::create(this);
+            if (renderer)
+                batchLayer->addChild(renderer);
+        }
+
         PlayLayer::resetLevel();
 
         auto renderer = Renderer::get();
