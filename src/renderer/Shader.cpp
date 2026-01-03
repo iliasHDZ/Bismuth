@@ -1,5 +1,7 @@
 #include "Shader.hpp"
 #include "Geode/cocos/platform/win32/CCGL.h"
+#include "common.hpp"
+#include "glslang/MachineIndependent/Versions.h"
 
 #include <Geode/Geode.hpp>
 #include <vector>
@@ -49,7 +51,7 @@ std::optional<std::string> readResourceFile(const fs::path& path) {
 }
 
 /*
-    This is the main reason to compile with glslang. It is
+    This is the main reason to use glslang. It is
     to use the #include pre-processor.
 */
 class CustomIncluder : public glslang::TShader::Includer {
@@ -80,8 +82,24 @@ private:
 
 static TBuiltInResource getDefaultResources();
 
+static void removeLinesStartingWith(std::string& string, const std::string& start) {
+    usize index;
+    
+    while ((index = string.find("\n" + start)) != std::string::npos) {
+        index++;
+        usize afterIndex = index;
+        while (afterIndex < string.size() && string[afterIndex] != '\r' && string[afterIndex] != '\n')
+            afterIndex++;
+
+        std::string newCode = string.substr(0, index);
+        if (afterIndex < string.size())
+            newCode += string.substr(afterIndex, string.size() - afterIndex);
+        string = newCode;
+    }
+}
+
 // Confusingly, the enum for shader stages in glslang is called EShLanguage
-static std::unique_ptr<glslang::TShader> compileShader(EShLanguage stage, const std::string& code, const std::string& name) {
+static std::optional<std::string> preprocessShader(EShLanguage stage, const std::string& code, const std::string& name) {
     auto shader = std::make_unique<glslang::TShader>(stage);
 
     const char* str   = code.c_str();
@@ -100,23 +118,25 @@ static std::unique_ptr<glslang::TShader> compileShader(EShLanguage stage, const 
     CustomIncluder includer;
 
     auto res = getDefaultResources();
-    if (!shader->parse(&res, 110, ENoProfile, false, false, EShMsgDefault, includer)) {
+    std::string codeOut;
+    if (!shader->preprocess(&res, 110, ENoProfile, false, false, EShMsgDefault, &codeOut, includer)) {
         const char* shaderType = (stage == EShLangFragment) ? "fragment" : "vertex";
         geode::log::error("failed to compile {} shader (glslang):", shaderType);
         printErrorLog(shader->getInfoLog());
-        return nullptr;
+        return std::nullopt;
     }
 
-    return shader;
+    removeLinesStartingWith(codeOut, "#extension GL_ARB_shading_language_include");
+
+    log::info("GL_VENDOR: {}", (const char*)glGetString(GL_VENDOR));
+
+    if (!isNVidiaGPU())
+        removeLinesStartingWith(codeOut, "#line");
+
+    return "#version 460\n" + codeOut;
 }
 
-struct ShaderBinaries {
-    bool success;
-    std::vector<u32> vertexShader;
-    std::vector<u32> fragmentShader;
-};
-
-static ShaderBinaries compileProgram(const fs::path& vertexPath, const fs::path& fragmentPath, std::string preCode) {
+static std::optional<ShaderSources> preprocessProgram(const fs::path& vertexPath, const fs::path& fragmentPath, std::string preCode) {
     auto vertexSource   = readResourceFile(vertexPath);
     auto fragmentSource = readResourceFile(fragmentPath);
 
@@ -125,38 +145,18 @@ static ShaderBinaries compileProgram(const fs::path& vertexPath, const fs::path&
     if (!fragmentSource)
         geode::log::error("could not find fragment shader at path: {}", fragmentPath);
     if (!vertexSource || !fragmentSource)
-        return { false };
+        return std::nullopt;
 
-    auto vertexShader = compileShader(EShLangVertex, preCode + vertexSource.value(), vertexPath.string());
-    if (!vertexShader) return { false };
+    auto vertexShader = preprocessShader(EShLangVertex, preCode + vertexSource.value(), vertexPath.string());
+    if (!vertexShader) return std::nullopt;
 
-    auto fragmentShader = compileShader(EShLangFragment, preCode + fragmentSource.value(), fragmentPath.string());
-    if (!fragmentShader) return { false };
-    
-    auto program = std::make_unique<glslang::TProgram>();
+    auto fragmentShader = preprocessShader(EShLangFragment, preCode + fragmentSource.value(), fragmentPath.string());
+    if (!fragmentShader) return std::nullopt;
 
-    program->addShader(vertexShader.get());
-    program->addShader(fragmentShader.get());
-
-    if (!program->link(EShMsgDefault)) {
-        geode::log::error("failed to link shader program (glslang):");
-        printErrorLog(program->getInfoLog());
-        return { false };
-    }
-
-    ShaderBinaries binaries = { true };
-    glslang::TIntermediate* interm;
-
-    interm = program->getIntermediate(EShLangVertex);
-    glslang::GlslangToSpv(*interm, binaries.vertexShader);
-
-    interm = program->getIntermediate(EShLangFragment);
-    glslang::GlslangToSpv(*interm, binaries.fragmentShader);
-
-    return binaries;
+    return ShaderSources { vertexShader.value(), fragmentShader.value() };
 }
 
-static u32 createShaderOld(i32 type, const char* source) {
+static u32 createShader(i32 type, const char* source) {
     u32 shader = glCreateShader(type);
     glShaderSource(shader, 1, &source, NULL);
     glCompileShader(shader);
@@ -175,9 +175,9 @@ static u32 createShaderOld(i32 type, const char* source) {
     return shader;
 }
 
-Shader* Shader::createOld(const ShaderSources& sources) {
-    u32 vertexShader   = createShaderOld(GL_VERTEX_SHADER, sources.vertexSource);
-    u32 fragmentShader = createShaderOld(GL_FRAGMENT_SHADER, sources.fragmentSource);
+Shader* Shader::create(const ShaderSources& sources) {
+    u32 vertexShader   = createShader(GL_VERTEX_SHADER, sources.vertexSource.c_str());
+    u32 fragmentShader = createShader(GL_FRAGMENT_SHADER, sources.fragmentSource.c_str());
 
     if (!vertexShader || !fragmentShader) {
         if (vertexShader)   glDeleteShader(vertexShader);
@@ -209,52 +209,6 @@ Shader* Shader::createOld(const ShaderSources& sources) {
     return shader;
 }
 
-Shader* Shader::createOld(
-    const fs::path& vertexPath,
-    const fs::path& fragmentPath
-) {
-    auto vertexSource   = readResourceFile(vertexPath);
-    auto fragmentSource = readResourceFile(fragmentPath);
-    return createOld({vertexSource.value().c_str(), fragmentSource.value().c_str()});
-}
-
-#define GL_SHADER_BINARY_FORMAT_SPIR_V 0x9551
-
-typedef void* (*PFNWGLGETPROCADDRESSPROC_PRIVATE)(const char*);
-
-typedef void(*glSpecializeShaderProc)(
-    GLuint shader,
-    const GLchar* pEntryPoint,
-    GLuint numSpecializationConstants,
-    const GLuint* pConstantIndex,
-    const GLuint* pConstantValue
-);
-
-static u32 createShader(i32 type, const std::vector<u32>& code) {
-    u32 shader = glCreateShader(type);
-    glShaderBinary(1, &shader, GL_SHADER_BINARY_FORMAT_SPIR_V, code.data(), code.size() * sizeof(u32));
-
-    auto wglGetProcAddress = (PFNWGLGETPROCADDRESSPROC_PRIVATE)GetProcAddress(LoadLibraryA("opengl32.dll"), "wglGetProcAddress");
-    auto glSpecializeShader = (glSpecializeShaderProc)wglGetProcAddress("glSpecializeShader");
-
-    glSpecializeShader(shader, "main", 0, NULL, NULL);
-    glCompileShader(shader);
-
-    i32 success;
-    glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
-    if (!success) {
-        char log[512];
-        glGetShaderInfoLog(shader, 512, NULL, log);
-        const char* shaderType = (type == GL_FRAGMENT_SHADER) ? "fragment" : "vertex";
-        geode::log::error("failed to compile {} shader (opengl):", shaderType);
-        printErrorLog(log);
-        glDeleteShader(shader);
-        return 0;
-    };
-
-    return shader;
-}
-
 Shader* Shader::create(
     const fs::path& vertexPath,
     const fs::path& fragmentPath,
@@ -264,38 +218,11 @@ Shader* Shader::create(
     for (auto [k, v] : macroVariables)
         preCode += "#define " + k + " " + v + "\n";
 
-    auto binaries = compileProgram(vertexPath, fragmentPath, preCode);
-    if (!binaries.success)
+    auto sources = preprocessProgram(vertexPath, fragmentPath, preCode);
+    if (!sources)
         return nullptr;
-    
-    u32 vertexShader   = createShader(GL_VERTEX_SHADER,   binaries.vertexShader);
-    u32 fragmentShader = createShader(GL_FRAGMENT_SHADER, binaries.fragmentShader);
 
-    if (!vertexShader || !fragmentShader) {
-        if (vertexShader)   glDeleteShader(vertexShader);
-        if (fragmentShader) glDeleteShader(fragmentShader);
-        return nullptr;
-    }
-
-    u32 program = glCreateProgram();
-    glAttachShader(program, vertexShader);
-    glAttachShader(program, fragmentShader);
-    glLinkProgram(program);
-
-    int success;
-    glGetProgramiv(program, GL_LINK_STATUS, &success);
-    if (!success) {
-        char log[512];
-        glGetProgramInfoLog(program, 512, NULL, log);
-        geode::log::error("failed to link shader program (opengl):");
-        printErrorLog(log);
-        glDeleteProgram(program);
-        return nullptr;
-    }
-
-    Shader* shader = new Shader();
-    shader->program = program;
-    return shader;
+    return create(sources.value());
 }
 
 void Shader::setMatrix4(u32 location, const float* data) {

@@ -1,6 +1,7 @@
 #include <Geode/Geode.hpp>
 #include <unordered_map>
 #include <vector>
+#include "Geode/cocos/CCDirector.h"
 #include "common.hpp"
 #include "profiler.hpp"
 
@@ -23,6 +24,9 @@ class $modify(MyCCKeyboardDispatcher, cocos2d::CCKeyboardDispatcher) {
     bool dispatchKeyboardMSG(cocos2d::enumKeyCodes key, bool keyDown, bool p3) {
         if (keyDown && key == cocos2d::KEY_P)
             takeSnapshotNextFrame = true;
+        if (keyDown && key == cocos2d::KEY_F10) {
+            cocos2d::CCDirector::get()->getRunningScene()->setVisible(!cocos2d::CCDirector::get()->getRunningScene()->isVisible());
+        }
 
         return cocos2d::CCKeyboardDispatcher::dispatchKeyboardMSG(key, keyDown, p3);
     }
@@ -107,7 +111,6 @@ void functionPop(const char* name) {
 
 }
 
-/*
 #include <Geode/modify/CCSprite.hpp>
 _PROFILER_HOOK_VOID(cocos2d::CCSprite, updateTransform);
 _PROFILER_HOOK_VOID(cocos2d::CCSprite, setColor, const cocos2d::ccColor3B&);
@@ -117,6 +120,20 @@ _PROFILER_HOOK_VOID(cocos2d::CCSprite, setOpacity, unsigned char);
 _PROFILER_HOOK_VOID(cocos2d::CCNodeRGBA, setColor, const cocos2d::ccColor3B&);
 _PROFILER_HOOK_VOID(cocos2d::CCNodeRGBA, updateDisplayedColor, const cocos2d::ccColor3B&);
 
+#include <Geode/modify/CCDisplayLinkDirector.hpp>
+_PROFILER_HOOK_VOID(cocos2d::CCDisplayLinkDirector, mainLoop);
+
+#include <Geode/modify/CCDirector.hpp>
+_PROFILER_HOOK_VOID(cocos2d::CCDirector, drawScene);
+
+#include <Geode/modify/CCScheduler.hpp>
+_PROFILER_HOOK_VOID(cocos2d::CCScheduler, update, float);
+
+#include <Geode/modify/CCScene.hpp>
+_PROFILER_HOOK_VOID(cocos2d::CCScene, visit);
+
+#include <Geode/modify/CCEGLView.hpp>
+_PROFILER_HOOK_VOID(cocos2d::CCEGLView, swapBuffers);
+
 #include <Geode/modify/CCSpriteBatchNode.hpp>
 _PROFILER_HOOK_VOID(cocos2d::CCSpriteBatchNode, draw);
-*/

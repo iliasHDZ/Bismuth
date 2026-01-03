@@ -6,7 +6,6 @@
 #include "ObjectSorter.hpp"
 #include "Shader.hpp"
 #include <unordered_map>
-#include <optional>
 #include <set>
 
 #include "DifferenceMode.hpp"
@@ -18,7 +17,7 @@ using namespace geode;
 class Renderer : public cocos2d::CCNode {
 private:
     inline Renderer()
-        : objectBatch(this), groupManager(*this), differenceMode(*this) {}
+        : objectBatch(*this), groupManager(*this), differenceMode(*this) {}
     ~Renderer() override;
 
     bool init(PlayLayer* layer);
@@ -46,6 +45,8 @@ protected:
 public:
     void update(float dt) override;
 
+    bool isObjectInView(usize srbIndex);
+
     inline cocos2d::CCTexture2D* getSpriteSheetTexture(SpriteSheet sheet) {
         if ((i32)sheet < 0 || (i32)sheet >= (i32)SpriteSheet::COUNT)
             return nullptr;
@@ -71,16 +72,18 @@ public:
         debugTextEnabled = !debugTextEnabled;
     }
 
-    inline bool isDifferenceModeEnabled() { return differenceModeEnabled; }
+    inline bool isDifferenceModeEnabled() const { return differenceModeEnabled; }
     inline void setDifferenceModeEnabled(bool enabled) {
         differenceModeEnabled = enabled;
     }
 
-    inline bool canEnableDisableIngame() { return ingameEnableDisable; }
+    inline bool canEnableDisableIngame() const { return ingameEnableDisable; }
 
     inline void setGJBGLUpdateTime(u64 time) {
         gjbglUpdateTime = time;
     }
+
+    inline bool isUseIndexCulling() const { return useIndexCulling; }
 
     bool useOptimizations();
 
@@ -106,13 +109,22 @@ private:
     bool debugTextEnabled = false;
     bool ingameEnableDisable = false;
 
+    bool useIndexCulling = false;
+
     u64 rendererStartTime = 0;
 
     u64 drbGenerationTime = 0;
     u64 drawFuncTime = 0;
     u64 gjbglUpdateTime = 0;
 
+    usize spritesOnScreen = 0;
+
     std::unordered_map<GameObject*, usize> objectSRBIndicies;
+
+    // Used by the isObjectInView() function
+    std::vector<GroupCombinationIndex> groupCombIndexPerObjectSRBIndex;
+    std::vector<glm::vec2> startPositionPerObjectSRBIndex;
+    glm::vec2 cameraCenterPos;
 
     cocos2d::CCTexture2D* spriteSheets[(i32)SpriteSheet::COUNT] = { nullptr };
 

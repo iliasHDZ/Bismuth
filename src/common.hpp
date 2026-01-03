@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ccTypes.h"
+#include <cstring>
 #include <glm/glm.hpp>
 #include <Geode/Geode.hpp>
 #include <chrono>
@@ -48,4 +49,16 @@ extern std::chrono::steady_clock::time_point modStartTime;
 
 inline u64 getTime() {
     return (std::chrono::high_resolution_clock::now() - modStartTime).count();
+}
+
+inline bool isNVidiaGPU() {
+    return strcmp((const char*)glGetString(GL_VENDOR), "NVIDIA Corporation") == 0;
+}
+
+inline bool isAMDGPU() {
+    return strcmp((const char*)glGetString(GL_VENDOR), "AMD") == 0;
+}
+
+inline bool isIntelGPU() {
+    return strcmp((const char*)glGetString(GL_VENDOR), "Intel") == 0;
 }

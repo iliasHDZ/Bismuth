@@ -6,8 +6,8 @@
 #include <map>
 
 struct ShaderSources {
-    const char* vertexSource;
-    const char* fragmentSource;
+    std::string vertexSource;
+    std::string fragmentSource;
 };
 
 class Shader {
@@ -15,12 +15,7 @@ private:
     ~Shader();
 
 public:
-    static Shader* createOld(const ShaderSources& sources);
-    
-    static Shader* createOld(
-        const fs::path& vertexPath,
-        const fs::path& fragmentPath
-    );
+    static Shader* create(const ShaderSources& sources);
 
     static Shader* create(
         const fs::path& vertexPath,

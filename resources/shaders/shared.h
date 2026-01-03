@@ -25,6 +25,8 @@ struct alignas(4) RGBA { u8 r, g, b, a; };
 #define GROUP_ID_LIMIT     0
 #define TOTAL_OBJECT_COUNT 0
 
+#define GLSL_ONLY(D)
+
 #else
 
 #define SPRITE_SHEET_GAME_1   0
@@ -37,7 +39,7 @@ struct alignas(4) RGBA { u8 r, g, b, a; };
 #define SPRITE_SHEET_UNK      7
 #define SPRITE_SHEET_PARTICLE 8
 
-#extension GL_EXT_scalar_block_layout:require
+// #extension GL_EXT_scalar_block_layout : enable
 
 #define RGBA uint
 #define RGBA_TO_VEC4(V) vec4( \
@@ -46,6 +48,7 @@ struct alignas(4) RGBA { u8 r, g, b, a; };
     float(((V) >> 16) & 0xff) / 255.0, \
     float(((V) >> 24) & 0xff) / 255.0 \
 )
+#define BitmapThing uint
 
 const float PI = 3.1415926535897932384626433832795;
 
@@ -63,6 +66,8 @@ vec2 rotatePointAroundOrigin(vec2 point, float angleInRadians) {
 
 #define GET_LOW16(V)  ( (V)       & 0xffff )
 #define GET_HIGH16(V) ( (V >> 16) & 0xffff )
+
+#define GLSL_ONLY(D) D
 
 #endif
 
@@ -112,7 +117,7 @@ vec2 rotatePointAroundOrigin(vec2 point, float angleInRadians) {
     Rendering info of an object that never changes.
 */
 struct StaticObjectInfo {
-    vec2 objectPosition;
+    vec2 startPosition;
     float rotationSpeed;
     // Flags are the macro variables beginning with OBJECT_FLAG_*
     int flags;
@@ -122,6 +127,50 @@ struct StaticObjectInfo {
     HSV baseHSV;
     HSV detailHSV;
     uint groupCombinationIndex;
+};
+
+#define SPRITE_TYPE_BASE   0
+#define SPRITE_TYPE_DETAIL 1
+#define SPRITE_TYPE_BLACK  2
+#define SPRITE_TYPE_GLOW   3
+
+struct SpriteInfo {
+    // This is the position of the bottom left vertex
+    vec2 bottomLeftPosition;
+    /*
+        You can get the positions of the 3 other verticies
+        by using the following members like so:
+        - bottomRight = bottomLeftPosition + rightVector;
+        - topLeft     = bottomLeftPosition + upVector;
+        - topRight    = bottomLeftPosition + rightVector + upVector;
+    */
+    vec2 upVector;
+    vec2 rightVector;
+    /*
+        The following two members consist of
+        2 16-bit unsigned integers combined into a single uint (32-bit).
+        The low 16-bits is the X position and the high 16-bit is the Y position.
+        The positions are pixel positions. They go from [0, 0] to [width, height].
+    */
+    uint texCoordBottomLeft;
+    uint texCoordTopRight;
+
+    /*
+        This is an index into the object info array.
+        However the highest 6 bits are extra info.
+        The highest 4 bits of this extra info specifies
+        the spritesheet this sprite is from and the
+        lower 2 specify the sprite type. The sprite
+        types can be seen above with the macros starting
+        with SPRITE_TYPE*.
+
+        SSSSttii iiiiiiii iiiiiiii iiiiiiii
+
+        S = spritesheet
+        t = sprite type (SPRITE_TYPE_* macros)
+        i = object info index
+    */
+    uint objectInfoIndexAndTypeInfo;
 };
 
 /*
@@ -136,6 +185,10 @@ struct GroupCombinationState {
     uint _padding;
 };
 
+////////////////////////////////////////////////////
+//// UNIFORM BUFFERS AND SHADER STORAGE BUFFERS ////
+////////////////////////////////////////////////////
+
 #define DYNAMIC_RENDERING_BUFFER_BINDING 0
 #define STATIC_RENDERING_BUFFER_BINDING  1
 #define RENDERER_UNIFORM_BUFFER_BINDING  2
@@ -147,7 +200,11 @@ struct GroupCombinationState {
     to change almost every frame. Stuff like the color
     channel colors and group transforms.
 */
+#ifdef GLSL
+layout (std430, binding = DYNAMIC_RENDERING_BUFFER_BINDING) buffer DynamicRenderingBuffer {
+#else
 struct DynamicRenderingBuffer {
+#endif
     RGBA channelColors[COLOR_CHANNEL_COUNT];
     /*
         Bitmap for whether the color channels
@@ -155,8 +212,8 @@ struct DynamicRenderingBuffer {
     */
     uint colorChannelBlendingBitmap[COLOR_CHANNEL_COUNT / 32 + 1];
 
-    GroupCombinationState groupCombinationStates[GROUP_ID_LIMIT];
-};
+    GroupCombinationState groupCombinationStates[];
+} GLSL_ONLY(drb);
 
 /*
     This is the structure of the static rendering
@@ -164,12 +221,16 @@ struct DynamicRenderingBuffer {
     the required rendering information never changes.
     Stuff like group ids of objects and object flags.
 */
+#ifdef GLSL
+layout (std430, binding = STATIC_RENDERING_BUFFER_BINDING) buffer StaticRenderingBuffer {
+#else
 struct StaticRenderingBuffer {
-    StaticObjectInfo objects[1];
-};
+#endif
+    StaticObjectInfo objects[];
+} GLSL_ONLY(srb);
 
 #ifdef GLSL
-layout (std430, binding = RENDERER_UNIFORM_BUFFER_BINDING) uniform RendererUniformBuffer {
+layout (std140, binding = RENDERER_UNIFORM_BUFFER_BINDING) uniform RendererUniformBuffer {
 #else
 struct RendererUniformBuffer {
 #endif

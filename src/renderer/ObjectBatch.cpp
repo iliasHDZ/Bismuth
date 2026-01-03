@@ -51,7 +51,7 @@ ObjectQuad* ObjectBatch::writeQuad(
     SpriteSheet spriteSheet,
     const glm::vec2& parentObjectPosition
 ) {     
-    CCTexture2D* texture = renderer->getSpriteSheetTexture(spriteSheet);
+    CCTexture2D* texture = renderer.getSpriteSheetTexture(spriteSheet);
     if (texture == nullptr)
         return nullptr;
 
@@ -239,7 +239,7 @@ void ObjectBatch::writeSprite(
         DEBUG_LOG("    {:.2f}, {:.2f}, {:.2f}", transform.a, transform.c, transform.tx);
         DEBUG_LOG("    {:.2f}, {:.2f}, {:.2f}", transform.b, transform.d, transform.ty);
 
-        usize srbIndex = renderer->getObjectSRBIndex(object);
+        usize srbIndex = renderer.getObjectSRBIndex(object);
 
         auto quad = writeQuad(sprite, transform, sheet, ccPointToGLM(object->m_startPosition));
         if (quad) {
@@ -262,19 +262,24 @@ void ObjectBatch::writeSprite(
 void ObjectBatch::finishWriting() {
     quadCount = currentQuadIndex;
     
-    std::vector<u32> indicies;
-    indicies.resize(quadCount * 6);
+    indicies.resize(quadCount);
 
     usize vertexIndex = 0;
-    for (usize i = 0; i < indicies.size(); i += 6) {
-        indicies[i + 0] = vertexIndex + QUAD_BL;
-        indicies[i + 1] = vertexIndex + QUAD_TL;
-        indicies[i + 2] = vertexIndex + QUAD_TR;
-        indicies[i + 3] = vertexIndex + QUAD_BL;
-        indicies[i + 4] = vertexIndex + QUAD_TR;
-        indicies[i + 5] = vertexIndex + QUAD_BR;
+    for (usize i = 0; i < quadCount; i++) {
+        ObjectIndicies& objIndicies = indicies[i];
+        objIndicies.indicies[0] = vertexIndex + QUAD_BL;
+        objIndicies.indicies[1] = vertexIndex + QUAD_TL;
+        objIndicies.indicies[2] = vertexIndex + QUAD_TR;
+        objIndicies.indicies[3] = vertexIndex + QUAD_BL;
+        objIndicies.indicies[4] = vertexIndex + QUAD_TR;
+        objIndicies.indicies[5] = vertexIndex + QUAD_BR;
         vertexIndex += 4;
     }
+    
+    quadsSrbIndicies.resize(quadCount);
+
+    for (usize i = 0; i < quadCount; i++)
+        quadsSrbIndicies[i] = quads[i].verticies[0].srbIndex;
 
     storeGLStates();
 
@@ -288,19 +293,43 @@ void ObjectBatch::finishWriting() {
         indexBuffer = nullptr;
     }
 
-    vertexBuffer = Buffer::createStaticDraw(quads.data(),    quadCount * sizeof(ObjectQuad));
-    indexBuffer  = Buffer::createStaticDraw(indicies.data(), indicies.size() * sizeof(u32));
-
+    vertexBuffer = Buffer::createStaticDraw(quads.data(), quadCount * sizeof(ObjectQuad));
+    if (renderer.isUseIndexCulling()) {
+        culledIndicies.resize(quadCount);
+        indexBuffer = Buffer::createDynamicDraw(indicies.size() * sizeof(ObjectIndicies));
+    } else {
+        indexBuffer = Buffer::createStaticDraw(indicies.data(), indicies.size() * sizeof(ObjectIndicies));
+        indicies.clear();
+    }
+    
     prepareVAO();
-
     restoreGLStates();
 
     quads.clear();
 }
 
-void ObjectBatch::draw() {
+usize ObjectBatch::generateCulledIndicies() {
+    usize outIndex = 0;
+
+    for (usize i = 0; i < quadCount; i++) {
+        if (!renderer.isObjectInView(quadsSrbIndicies[i]))
+            continue;
+
+        culledIndicies[outIndex] = indicies[i];
+        outIndex++;
+    }
+
+    indexBuffer->write(culledIndicies.data(), outIndex * sizeof(ObjectIndicies));
+    return outIndex * INDICIES_PER_QUAD;
+}
+
+usize ObjectBatch::draw() {
     bind();
-    glDrawElements(GL_TRIANGLES, indexCount(), GL_UNSIGNED_INT, nullptr);
+    usize indiciesCount = indexCount();
+    if (renderer.isUseIndexCulling())
+        indiciesCount = generateCulledIndicies();
+    glDrawElements(GL_TRIANGLES, indiciesCount, GL_UNSIGNED_INT, nullptr);
+    return indiciesCount / INDICIES_PER_QUAD;
 }
 
 struct AttribTypeInfo {

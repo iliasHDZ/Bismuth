@@ -2,9 +2,11 @@
 #include "Geode/cocos/CCDirector.h"
 #include "Geode/cocos/kazmath/include/kazmath/mat4.h"
 #include "Geode/cocos/platform/win32/CCGL.h"
+#include "GroupManager.hpp"
 #include "ccTypes.h"
 #include "common.hpp"
 #include "decomp/PlayLayer.hpp"
+#include "glm/common.hpp"
 #include <Geode/Enums.hpp>
 #include <Geode/binding/GJBaseGameLayer.hpp>
 #include <Geode/binding/RingObject.hpp>
@@ -32,6 +34,9 @@ bool Renderer::init(PlayLayer* layer) {
 
     if (!Mod::get()->getSettingValue<bool>("enabled"))
         return false;
+
+    ingameEnableDisable = Mod::get()->getSettingValue<bool>("ingame_enable");
+    useIndexCulling     = Mod::get()->getSettingValue<bool>("index_culling");
 
     log::info("OpenGL Version: {}", (const char*)glGetString(GL_VERSION));
 
@@ -116,6 +121,7 @@ bool Renderer::init(PlayLayer* layer) {
     log::info("Generating vertex buffer...");
 
     objectBatch.allocateReservations();
+    std::vector<GameObject*> objests;
     for (auto it = sorter.iterator(); !it.isEnd(); it.next())
         objectBatch.writeGameObject(it.get());
     objectBatch.finishWriting();
@@ -126,7 +132,7 @@ bool Renderer::init(PlayLayer* layer) {
 
     i32 maxUniformBufferSize;
     glGetIntegerv(GL_MAX_UNIFORM_BLOCK_SIZE, &maxUniformBufferSize);
-    isDrbStorageBuffer = drbBufferSize > maxUniformBufferSize;
+    isDrbStorageBuffer = true;//drbBufferSize > maxUniformBufferSize;
 
     shaderMacroVariables["TOTAL_OBJECT_COUNT"] = std::to_string(renderedGameObjectCount == 0 ? 1 : renderedGameObjectCount);
     shaderMacroVariables["GROUP_ID_LIMIT"]     = std::to_string(groupCombCount);
@@ -158,8 +164,6 @@ bool Renderer::init(PlayLayer* layer) {
 
     setZOrder(-2);
     setEnabled(true);
-
-    ingameEnableDisable = Mod::get()->getSettingValue<bool>("ingame_enable");
 
     rendererStartTime = getTime();
 
@@ -299,7 +303,7 @@ void Renderer::generateStaticRenderingBuffer(ObjectSorter& sorter) {
         auto object = it.get();
         auto objectInfo = &objects[index];
 
-        objectInfo->objectPosition = ccPointToGLM(object->getPosition());
+        objectInfo->startPosition = ccPointToGLM(object->m_startPosition);
         if (object->getHasRotateAction())
             objectInfo->rotationSpeed = ((EnhancedGameObject*)object)->m_rotationDelta; // 'rotationDelta' is incorrect naming
         else
@@ -338,6 +342,8 @@ void Renderer::generateStaticRenderingBuffer(ObjectSorter& sorter) {
         objectInfo->fadeMargin = object->m_fadeMargin;
 
         objectSRBIndicies[object] = index;
+        groupCombIndexPerObjectSRBIndex.push_back(objectInfo->groupCombinationIndex);
+        startPositionPerObjectSRBIndex.push_back(objectInfo->startPosition);
         index++;
     }
 
@@ -363,7 +369,7 @@ void Renderer::draw() {
 
     glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
-    objectBatch.draw();
+    spritesOnScreen = objectBatch.draw();
 
     restoreGLStates();
     
@@ -402,6 +408,7 @@ void Renderer::updateDebugText() {
         text += fmt::format("GJBaseGameLayer::update() time: {}ms\n", (double)gjbglUpdateTime / 1000000.0);
         text += fmt::format("Total frame time: {}ms\n", (double)totalFrameTime / 1000000.0);
         text += fmt::format("Vertex buffer size: {}\n", byteSizeToString(objectBatch.getQuadCount() * sizeof(ObjectQuad)));
+        text += fmt::format("Sprites on screen: {}\n", spritesOnScreen);
         text += fmt::format("Static rendering buffer size: {}\n", byteSizeToString(srbBuffer->getSize()));
         text += fmt::format("Dynamic rendering buffer size: {}\n", byteSizeToString(drbBuffer->getSize()));
         text += "\n";
@@ -426,6 +433,18 @@ void Renderer::update(float dt) {
 
     if (debugText->isVisible())
         updateDebugText();
+
+    auto& gstate = layer->m_gameState;
+    cameraCenterPos = ccPointToGLM(gstate.m_cameraPosition2 + CCPoint(layer->m_cameraWidth * 0.5, layer->m_cameraHeight * 0.5));
+}
+
+bool Renderer::isObjectInView(usize srbIndex) {
+    GroupCombinationIndex groupCombIndex = groupCombIndexPerObjectSRBIndex[srbIndex];
+
+    auto& state = drb->groupCombinationStates[groupCombIndex];
+    glm::vec2 diff = glm::abs((state.positionalTransform * startPositionPerObjectSRBIndex[srbIndex] + state.offset) - cameraCenterPos);
+
+    return (diff.x * diff.x + diff.y * diff.y) <= (350 * 350);
 }
 
 Ref<Renderer> Renderer::create(PlayLayer* layer) {

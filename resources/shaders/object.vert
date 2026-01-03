@@ -10,29 +10,13 @@ layout (location = 3) in uint a_colorChannel;
 layout (location = 4) in int  a_spriteSheet;
 layout (location = 5) in int  a_opacity;
 
-#ifdef IS_DRB_STORAGE_BUFFER
-#define DRB_BUFFER_KEYWORD buffer
-#else
-#define DRB_BUFFER_KEYWORD uniform
-#endif
-
-//// UNIFORM and STORAGE BUFFERS ////
-layout (std430, binding = DYNAMIC_RENDERING_BUFFER_BINDING) DRB_BUFFER_KEYWORD DRB {
-    DynamicRenderingBuffer drb;
-};
-
-layout (std430, binding = STATIC_RENDERING_BUFFER_BINDING) buffer SRB {
-    // StaticRenderingBuffer srb;
-    StaticObjectInfo objects[];
-};
-
 //// TRANSFER VARIABLES ////
 out vec2 t_texCoord;
 flat out int t_spriteSheet;
 out vec4 t_color;
 flat out uint t_blending;
 
-#define SRB_OBJECT (objects[a_srbIndex])
+#define SRB_OBJECT (srb.objects[a_srbIndex])
 
 //// GLOBALS ////
 uint objectFlags;
@@ -50,18 +34,27 @@ vec4 applyHSV(HSV hsvValue, vec4 color);
 void main() {
     //// CALCULATING VERTEX POSITION ////
     
-    vertexOffset   = a_positionOffset;
-    objectFlags    = SRB_OBJECT.flags;
-    objectPosition = SRB_OBJECT.objectPosition;
+    objectPosition = SRB_OBJECT.startPosition;
     // calculateObjectGroupState();
 
     // APPLY GROUP COMBINATION STATE
+    
     GroupCombinationState state = drb.groupCombinationStates[SRB_OBJECT.groupCombinationIndex];
-    objectOpacity *= state.opacity;
     objectPosition = state.positionalTransform * objectPosition + state.offset;
+
+    // vec2 cameraCenter = u_cameraPosition + u_cameraViewSize * 0.5;
+    // vec2 diff = abs(objectPosition - cameraCenter);
+    // if ((diff.x * diff.x + diff.y * diff.y) > (300 * 300)) {
+    //     gl_Position = vec4(5000.0, 5000.0, 5000.0, 1.0);
+    //     return;
+    // }
+    
+    vertexOffset   = a_positionOffset;
+    objectFlags    = SRB_OBJECT.flags;
+
+    objectOpacity *= state.opacity;
     if ((objectFlags & OBJECT_FLAG_IS_STATIC_OBJECT) == 0)
         vertexOffset = state.localTransform * vertexOffset;
-
     objectOpacity *= float(a_opacity) / 255.0;
 
     if (SRB_OBJECT.rotationSpeed != 0.0) // TODO: Just supply rotation speed in radians instead

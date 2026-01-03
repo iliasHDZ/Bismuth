@@ -33,13 +33,22 @@ using namespace geode;
 #define VERTEX_ATTRIBUTE_AS_STRUCT_MEMBER(ID, TYPE, NAME) \
     TYPE NAME;
 
+#define VERTICIES_PER_QUAD 4
+#define INDICIES_PER_QUAD  6
+
 struct ObjectVertex {
     OBJECT_VERTEX_ATTRIBUTES(VERTEX_ATTRIBUTE_AS_STRUCT_MEMBER);
 };
 
 struct ObjectQuad {
-    ObjectVertex verticies[4];
+    ObjectVertex verticies[VERTICIES_PER_QUAD];
 };
+
+struct ObjectIndicies {
+    u32 indicies[INDICIES_PER_QUAD];
+};
+
+#define MAX_SPRITES 500000
 
 ////////////////////////////////////////////////
 
@@ -61,7 +70,7 @@ class Renderer;
 
 class ObjectBatch {
 public:
-    inline ObjectBatch(Renderer* renderer)
+    inline ObjectBatch(Renderer& renderer)
         : renderer(renderer) {}
     ~ObjectBatch();
 
@@ -95,7 +104,9 @@ public:
         return quadCount;
     }
 
-    void draw();
+    usize generateCulledIndicies();
+
+    usize draw();
 
 public:
     enum class SpriteType {
@@ -116,7 +127,7 @@ private:
     void prepareVAO();
 
 private:
-    Renderer* renderer;
+    Renderer& renderer;
 
     usize reservedQuadCount = 0;
 
@@ -126,6 +137,11 @@ private:
 
     Buffer* vertexBuffer = nullptr;
     Buffer* indexBuffer = nullptr;
+
+    std::vector<u32> quadsSrbIndicies;
+    std::vector<ObjectIndicies> indicies;
+    std::vector<ObjectIndicies> culledIndicies;
+
     u32 vao = 0;
     u32 quadCount = 0;
 };

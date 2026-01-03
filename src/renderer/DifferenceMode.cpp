@@ -114,7 +114,7 @@ void DifferenceMode::prepare(u32 width, u32 height) {
     }
 
     if (!shader)
-        shader = Shader::createOld("differenceMode.vert", "differenceMode.frag");
+        shader = Shader::create("differenceMode.vert", "differenceMode.frag");
 
     restoreGLStates();
 }
