@@ -1,10 +1,12 @@
 #pragma once
 
+#include <Geode/binding/GameObject.hpp>
 #include <common.hpp>
 #include <Geode/Geode.hpp>
 #include <vector>
 
 #include "Buffer.hpp"
+#include "ObjectSpriteUnpacker.hpp"
 
 using namespace geode;
 
@@ -41,7 +43,15 @@ struct ObjectVertex {
 };
 
 struct ObjectQuad {
-    ObjectVertex verticies[VERTICIES_PER_QUAD];
+    union {
+        ObjectVertex verticies[VERTICIES_PER_QUAD];
+        struct {
+            ObjectVertex bl;
+            ObjectVertex br;
+            ObjectVertex tl;
+            ObjectVertex tr;
+        };
+    };
 };
 
 struct ObjectIndicies {
@@ -52,38 +62,24 @@ struct ObjectIndicies {
 
 ////////////////////////////////////////////////
 
-enum class SpriteSheet {
-    GAME_1,
-    GAME_2,
-    TEXT,
-    FIRE,
-    SPECIAL,
-    GLOW,
-    PIXEL,
-    _UNK,
-    PARTICLE,
-
-    COUNT
-};
-
 class Renderer;
 
-class ObjectBatch {
+class ObjectBatch : public ObjectSpriteUnpackerDelegate {
 public:
     inline ObjectBatch(Renderer& renderer)
-        : renderer(renderer) {}
+        : renderer(renderer), unpacker(*this) {}
     ~ObjectBatch();
 
     void reserveForGameObject(GameObject* object);
 
     void allocateReservations();
 
-    ObjectQuad* writeQuad(
+    void recieveUnpackedSprite(
+        GameObject* parentObject,
         cocos2d::CCSprite* sprite,
-        const cocos2d::CCAffineTransform& transform,
-        SpriteSheet spriteSheet,
-        const glm::vec2& parentObjectPosition
-    );
+        SpriteType type,
+        const cocos2d::CCAffineTransform& transform
+    ) override;
 
     void writeGameObjects(Ref<cocos2d::CCArray> objects);
 
@@ -108,26 +104,12 @@ public:
 
     usize draw();
 
-public:
-    enum class SpriteType {
-        MAIN,
-        COLOR,
-        GLOW
-    };
-
 private:
-
-    void writeSprite(
-        GameObject* object,
-        cocos2d::CCSprite* sprite,
-        cocos2d::CCAffineTransform transform,
-        SpriteType type = SpriteType::MAIN
-    );
-
     void prepareVAO();
 
 private:
     Renderer& renderer;
+    ObjectSpriteUnpacker unpacker;
 
     usize reservedQuadCount = 0;
 

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <common.hpp>
-#include "ObjectBatch.hpp"
+#include "ObjectSpriteUnpacker.hpp"
 
 struct ObjectBatchLayer {
     ZLayer zLayer;

@@ -128,8 +128,6 @@ static std::optional<std::string> preprocessShader(EShLanguage stage, const std:
 
     removeLinesStartingWith(codeOut, "#extension GL_ARB_shading_language_include");
 
-    log::info("GL_VENDOR: {}", (const char*)glGetString(GL_VENDOR));
-
     if (!isNVidiaGPU())
         removeLinesStartingWith(codeOut, "#line");
 
