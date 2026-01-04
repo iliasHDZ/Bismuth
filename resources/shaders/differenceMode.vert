@@ -1,5 +1,3 @@
-#version 460
-
 layout (location = 0) in vec2 a_position;
 
 out vec2 t_texCoord;

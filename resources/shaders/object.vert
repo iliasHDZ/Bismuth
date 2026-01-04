@@ -10,24 +10,23 @@ layout (location = 3) in uint a_colorChannel;
 layout (location = 4) in int  a_spriteSheet;
 layout (location = 5) in int  a_opacity;
 
-//// TRANSFER VARIABLES ////
-out vec2 t_texCoord;
-flat out int t_spriteSheet;
-out vec4 t_color;
+//// VARIABLES TO BE TRANSFERED TO THE FRAGMENT SHADER ////
+     out vec2 t_texCoord;
+flat out int  t_spriteSheet;
+     out vec4 t_color;
 flat out uint t_blending;
 
 #define SRB_OBJECT (srb.objects[a_srbIndex])
 
 //// GLOBALS ////
-uint objectFlags;
-vec2 objectPosition;
+uint  objectFlags;
+vec2  objectPosition;
 float objectOpacity = 1.0;
-vec2 vertexOffset;
+vec2  vertexOffset;
 
 //// HELPER FUNCTION PREDECLARATIONS ////
 float calculateAudioScale();
 vec4 calculateInvisibleBlockColorAndOpacity(vec4 color);
-// void calculateObjectGroupState();
 vec4 applyHSV(HSV hsvValue, vec4 color);
 
 //// MAIN FUNCTION ////
@@ -35,22 +34,14 @@ void main() {
     //// CALCULATING VERTEX POSITION ////
     
     objectPosition = SRB_OBJECT.startPosition;
-    // calculateObjectGroupState();
 
     // APPLY GROUP COMBINATION STATE
     
     GroupCombinationState state = drb.groupCombinationStates[SRB_OBJECT.groupCombinationIndex];
     objectPosition = state.positionalTransform * objectPosition + state.offset;
-
-    // vec2 cameraCenter = u_cameraPosition + u_cameraViewSize * 0.5;
-    // vec2 diff = abs(objectPosition - cameraCenter);
-    // if ((diff.x * diff.x + diff.y * diff.y) > (300 * 300)) {
-    //     gl_Position = vec4(5000.0, 5000.0, 5000.0, 1.0);
-    //     return;
-    // }
     
-    vertexOffset   = a_positionOffset;
-    objectFlags    = SRB_OBJECT.flags;
+    vertexOffset = a_positionOffset;
+    objectFlags  = SRB_OBJECT.flags;
 
     objectOpacity *= state.opacity;
     if ((objectFlags & OBJECT_FLAG_IS_STATIC_OBJECT) == 0)
@@ -79,7 +70,7 @@ void main() {
     t_blending = BITMAP_GET(drb.colorChannelBlendingBitmap, colorChannel);
     if (a_spriteSheet == SPRITE_SHEET_GLOW)
         t_blending = 1;
-
+    
     if ((objectFlags & OBJECT_FLAG_IS_INVISIBLE_BLOCK) != 0)
         t_color = calculateInvisibleBlockColorAndOpacity(t_color);
 
@@ -92,6 +83,12 @@ void main() {
     }
 
     t_color.a *= objectOpacity;
+
+    t_color.rgb *= t_color.a;
+    if (t_blending != 0) {
+        t_color.rgb *= t_color.a;
+        t_color.a = 0.0;
+    }
 }
 
 //// HELPER FUNCTIONS ////
@@ -182,63 +179,6 @@ vec4 calculateInvisibleBlockColorAndOpacity(vec4 color) {
 
     return color;
 }
-
-/*
-void applyGroupState(uint groupId) {
-    GroupState state = drb.groupStates[groupId];
-    objectOpacity *= state.opacity;
-
-    // vec2 offset = state.offset - (objectPosition - SRB_OBJECT.objectPosition);
-
-    objectPosition = state.positionalTransform * (objectPosition - SRB_OBJECT.objectPosition) + state.offset + SRB_OBJECT.objectPosition;
-    vertexOffset   = state.localTransform      * vertexOffset;
-}
-
-void calculateObjectGroupState() {
-    uint id;
-    uint elem;
-
-    elem = SRB_OBJECT.groupIds[0];
-    id = GET_LOW16(elem);
-    if (id != 0) applyGroupState(id);
-    else return;
-    id = GET_HIGH16(elem);
-    if (id != 0) applyGroupState(id);
-    else return;
-
-    elem = SRB_OBJECT.groupIds[1];
-    id = GET_LOW16(elem);
-    if (id != 0) applyGroupState(id);
-    else return;
-    id = GET_HIGH16(elem);
-    if (id != 0) applyGroupState(id);
-    else return;
-
-    elem = SRB_OBJECT.groupIds[2];
-    id = GET_LOW16(elem);
-    if (id != 0) applyGroupState(id);
-    else return;
-    id = GET_HIGH16(elem);
-    if (id != 0) applyGroupState(id);
-    else return;
-
-    elem = SRB_OBJECT.groupIds[3];
-    id = GET_LOW16(elem);
-    if (id != 0) applyGroupState(id);
-    else return;
-    id = GET_HIGH16(elem);
-    if (id != 0) applyGroupState(id);
-    else return;
-
-    elem = SRB_OBJECT.groupIds[4];
-    id = GET_LOW16(elem);
-    if (id != 0) applyGroupState(id);
-    else return;
-    id = GET_HIGH16(elem);
-    if (id != 0) applyGroupState(id);
-    else return;
-}
-*/
 
 // Credits to sam hocevar for the following two functions
 vec3 rgb2hsv(vec3 c) {

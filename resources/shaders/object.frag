@@ -4,17 +4,17 @@ uniform sampler2D u_spriteSheets[9];
 
 out vec4 FragColor;
 
-in vec2 t_texCoord;
-flat in int t_spriteSheet;
-in vec4 t_color;
+     in vec2 t_texCoord;
+flat in int  t_spriteSheet;
+     in vec4 t_color;
 flat in uint t_blending;
 
 void main() {
-    FragColor = texture(u_spriteSheets[t_spriteSheet], t_texCoord) * t_color;
-
-    FragColor.rgb *= t_color.a;
-    if (t_blending != 0) {
-        FragColor.rgb *= FragColor.a;
-        FragColor.a = 0;
+    if (t_blending == 0) {
+        FragColor = texture(u_spriteSheets[t_spriteSheet], t_texCoord) * t_color;
+    } else {
+        vec4 texColor = texture(u_spriteSheets[t_spriteSheet], t_texCoord);
+        FragColor = texColor * t_color;
+        FragColor.rgb *= texColor.a;
     }
 }
