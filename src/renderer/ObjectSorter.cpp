@@ -42,7 +42,7 @@ void ObjectSorter::addGameObject(GameObject* object) {
     if (layer)
         layer->objects.push_back(object);
 
-    if (object->m_glowSprite) {
+    if (object->m_glowSprite && !object->m_hasNoGlow) {
         auto layer = getLayer(zlayer, blending, SpriteSheet::GLOW);
         layer->objects.push_back(object);
     }
