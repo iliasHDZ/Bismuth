@@ -127,8 +127,6 @@ private:
     std::vector<ObjectIndicies> indicies;
     std::vector<ObjectIndicies> culledIndicies;
 
-    cocos2d::CCTexture2D* spriteSheetTexture;
-
     u32 vao = 0;
     u32 quadCount = 0;
 };

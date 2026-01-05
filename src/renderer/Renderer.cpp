@@ -3,6 +3,7 @@
 #include "Geode/cocos/kazmath/include/kazmath/mat4.h"
 #include "Geode/cocos/platform/win32/CCGL.h"
 #include "GroupManager.hpp"
+#include "ObjectBatchNode.hpp"
 #include "ccTypes.h"
 #include "common.hpp"
 #include "decomp/PlayLayer.hpp"
@@ -105,13 +106,11 @@ bool Renderer::init(PlayLayer* layer) {
     }
     sorter.finalizeSorting();
 
-    renderedGameObjectCount = 0;
-    for (auto it = sorter.iterator(); !it.isEnd(); it.next()){
-        renderedGameObjectCount++;
-        objectBatch.reserveForGameObject(it.get());
-    }
-
     log::info("Generating static rendering buffer....");
+
+    renderedGameObjectCount = 0;
+    for (auto it = sorter.iterator(); !it.isEnd(); it.next())
+        renderedGameObjectCount++;
 
     generateStaticRenderingBuffer(sorter);
 
@@ -119,12 +118,9 @@ bool Renderer::init(PlayLayer* layer) {
     log::info("{} group combinations detected", groupCombCount);
 
     log::info("Generating vertex buffer...");
+    generateBatchNodes(sorter);
 
-    objectBatch.allocateReservations();
-    std::vector<GameObject*> objests;
-    for (auto it = sorter.iterator(); !it.isEnd(); it.next())
-        objectBatch.writeGameObject(it.get());
-    objectBatch.finishWriting();
+    log::info("Compiling shaders...");
 
     std::map<std::string, std::string> shaderMacroVariables;
 
@@ -138,8 +134,6 @@ bool Renderer::init(PlayLayer* layer) {
     shaderMacroVariables["GROUP_ID_LIMIT"]     = std::to_string(groupCombCount);
     if (isDrbStorageBuffer)
         shaderMacroVariables["IS_DRB_STORAGE_BUFFER"] = "";
-
-    log::info("Compiling shaders...");
 
     shader = Shader::create("object.vert", "object.frag", shaderMacroVariables);
     if (!shader)
@@ -173,6 +167,40 @@ bool Renderer::init(PlayLayer* layer) {
     return true;
 }
 
+void Renderer::generateBatchNodes(ObjectSorter& sorter) {
+    // objectBatch.allocateReservations();
+    // std::vector<GameObject*> objests;
+    // for (auto it = sorter.iterator(); !it.isEnd(); it.next())
+    //     objectBatch.writeGameObject(it.get());
+    // objectBatch.finishWriting();
+
+    ZLayer      prevZLayer;
+    SpriteSheet prevSpriteSheet;
+
+    ObjectBatchNode* currentBatchNode = nullptr;
+
+    for (auto it = sorter.iterator(); !it.isEnd(); it.next()) {
+        auto& olayer = it.getLayer();
+        if (!currentBatchNode || prevZLayer != olayer.zLayer || prevSpriteSheet != olayer.sheet) {
+            auto batchNode = ObjectBatchNode::create(*this, olayer.sheet);
+            if (batchNode) {
+                layer->m_objectLayer->addChild(batchNode, olayer.node->getZOrder());
+                batchNodes.push_back(batchNode);
+            }
+
+            prevZLayer       = olayer.zLayer;
+            prevSpriteSheet  = olayer.sheet;
+            currentBatchNode = batchNode;
+        }
+
+        if (currentBatchNode)
+            currentBatchNode->addGameObject(it.get());
+    }
+
+    for (auto node : batchNodes)
+        node->generateBatch();
+}
+
 void Renderer::terminate() {
     if (shader)
         Shader::destroy(shader);
@@ -197,8 +225,6 @@ void Renderer::prepareShaderUniforms() {
     kmMat4 matrixP;
 	kmMat4 matrixMV;
 	kmMat4 matrixMVP;
-
-    glBlendFunc(CC_BLEND_SRC, CC_BLEND_DST);
 	
 	kmGLGetMatrix(KM_GL_PROJECTION, &matrixP);
 	kmGLGetMatrix(KM_GL_MODELVIEW, &matrixMV);
@@ -354,24 +380,23 @@ void Renderer::generateStaticRenderingBuffer(ObjectSorter& sorter) {
 };
 
 void Renderer::draw() {
+    storeGLStates();
+    prepareShaderUniforms();
+    prepareDynamicRenderingBuffer();
+    restoreGLStates();
+
+    /*
     u64 prevTime = getTime();
     
     if (debugTextEnabled) {
         // glBeginQuery(GL_TIME_ELAPSED, 50);
     }
 
-    storeGLStates();
-
-    shader->use();
-
-    prepareShaderUniforms();
-    prepareDynamicRenderingBuffer();
-
-    srbBuffer->bindAsStorageBuffer(STATIC_RENDERING_BUFFER_BINDING);
-
-    glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+    prepareDraw();
 
     spritesOnScreen = objectBatch.draw();
+
+    finishDraw();
 
     restoreGLStates();
     
@@ -381,6 +406,7 @@ void Renderer::draw() {
         // glGetQueryObjecti64v(50, GL_QUERY_RESULT, &renderTime);
     }
     drawFuncTime = getTime() - prevTime;
+    */
 
     if (debugText->isVisible())
         updateDebugText();
@@ -419,6 +445,25 @@ void Renderer::updateDebugText() {
         text += "_";
 
     debugText->setString(text.c_str());
+}
+
+Shader* Renderer::prepareDraw() {
+    storeGLStates();
+
+    shader->use();
+
+    srbBuffer->bindAsStorageBuffer(STATIC_RENDERING_BUFFER_BINDING);
+    drbBuffer->bindAsStorageBuffer(DYNAMIC_RENDERING_BUFFER_BINDING);
+    uniformBuffer->bindAsUniformBuffer(RENDERER_UNIFORM_BUFFER_BINDING);
+
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+
+    return shader;
+}
+
+void Renderer::finishDraw() {
+    restoreGLStates();
 }
 
 void Renderer::update(float dt) {
@@ -506,7 +551,7 @@ class $modify(RendererPlayLayer, PlayLayer) {
 
             auto renderer = Renderer::create(this);
             if (renderer)
-                batchLayer->addChild(renderer);
+                batchLayer->addChild(renderer, -100000);
         }
 
         PlayLayer::resetLevel();
@@ -584,8 +629,6 @@ class $modify(RendererGJBaseGameLayer, GJBaseGameLayer) {
 
         auto eman = m_effectManager;
         for (auto cmdObj : eman->m_unkVector5b0) {
-            //log::info("yah {} {}", cmdObj->m_unkInt204, m_gameState.m_unkUint2);
-
             if (/* cmdObj->m_unkInt204 != m_gameState.m_unkUint2 ||*/ cmdObj->m_someInterpValue1RelatedFalse)
                 continue;
 

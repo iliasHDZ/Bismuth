@@ -11,6 +11,7 @@
 #include "DifferenceMode.hpp"
 #include "GroupManager.hpp"
 #include "ShaderSpriteManager.hpp"
+#include "ObjectBatchNode.hpp"
 #include "../../resources/shaders/shared.h"
 
 using namespace geode;
@@ -23,6 +24,8 @@ private:
     ~Renderer() override;
 
     bool init(PlayLayer* layer);
+
+    void generateBatchNodes(ObjectSorter& sorter);
 
     void terminate();
 
@@ -37,12 +40,17 @@ private:
     void updateDebugText();
 
 protected:
+    Shader* prepareDraw();
+
+    void finishDraw();
+
     inline GroupCombinationState* getGroupCombinationStates() {
         if (drb == nullptr) return nullptr;
         return drb->groupCombinationStates;
     }
 
     friend class GroupManager;
+    friend class ObjectBatchNode;
 
 public:
     void update(float dt) override;
@@ -128,6 +136,8 @@ private:
     std::vector<GroupCombinationIndex> groupCombIndexPerObjectSRBIndex;
     std::vector<glm::vec2> startPositionPerObjectSRBIndex;
     glm::vec2 cameraCenterPos;
+
+    std::vector<ObjectBatchNode*> batchNodes;
 
     cocos2d::CCTexture2D* spriteSheets[(i32)SpriteSheet::COUNT] = { nullptr };
 

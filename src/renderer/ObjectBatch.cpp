@@ -288,6 +288,10 @@ usize ObjectBatch::draw() {
     usize indiciesCount = indexCount();
     if (renderer.isUseIndexCulling())
         indiciesCount = generateCulledIndicies();
+
+    if (indiciesCount == 0)
+        return 0;
+
     glDrawElements(GL_TRIANGLES, indiciesCount, GL_UNSIGNED_INT, nullptr);
     return indiciesCount / INDICIES_PER_QUAD;
 }

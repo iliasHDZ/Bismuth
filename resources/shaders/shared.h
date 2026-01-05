@@ -29,6 +29,7 @@ struct alignas(4) RGBA { u8 r, g, b, a; };
 #define TOTAL_OBJECT_COUNT 0
 
 #define GLSL_ONLY(D)
+#define CPP_ONLY(D) D
 
 #define UNIFORM_BUFFER(_BINDING) struct
 #define STORAGE_BUFFER(_BINDING) struct
@@ -74,6 +75,7 @@ vec2 rotatePointAroundOrigin(vec2 point, float angleInRadians) {
 #define GET_HIGH16(V) ( (V >> 16) & 0xffff )
 
 #define GLSL_ONLY(D) D
+#define CPP_ONLY(D)
 
 #define UNIFORM_BUFFER(_BINDING) layout (std140, binding = _BINDING) uniform
 #define STORAGE_BUFFER(_BINDING) layout (std430, binding = _BINDING) buffer
@@ -196,7 +198,7 @@ STORAGE_BUFFER(DYNAMIC_RENDERING_BUFFER_BINDING) DynamicRenderingBuffer {
     */
     uint colorChannelBlendingBitmap[COLOR_CHANNEL_COUNT / 32 + 1];
 
-    GroupCombinationState groupCombinationStates[];
+    GroupCombinationState groupCombinationStates[CPP_ONLY(0)];
 } GLSL_ONLY(drb);
 
 /*
@@ -206,7 +208,7 @@ STORAGE_BUFFER(DYNAMIC_RENDERING_BUFFER_BINDING) DynamicRenderingBuffer {
     of objects and object flags.
 */
 STORAGE_BUFFER(STATIC_RENDERING_BUFFER_BINDING) StaticRenderingBuffer {
-    StaticObjectInfo objects[];
+    StaticObjectInfo objects[CPP_ONLY(0)];
 } GLSL_ONLY(srb);
 
 /*

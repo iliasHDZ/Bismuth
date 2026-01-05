@@ -37,6 +37,8 @@ public:
 
         inline GameObject* get() const { return sorter.layers[layerIndex].objects[objectIndex]; }
 
+        inline ObjectBatchLayer& getLayer() const { return sorter.layers[layerIndex]; }
+
     private:
         ObjectSorter& sorter;
         u32 layerIndex = 0;
