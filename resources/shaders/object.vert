@@ -8,13 +8,14 @@ layout (location = 1) in vec2 a_texCoord;
 layout (location = 2) in int  a_srbIndex;
 layout (location = 3) in uint a_colorChannel;
 layout (location = 4) in int  a_spriteSheet;
-layout (location = 5) in int  a_opacity;
+layout (location = 5) in uint a_shaderSprite;
 
 //// VARIABLES TO BE TRANSFERED TO THE FRAGMENT SHADER ////
      out vec2 t_texCoord;
-flat out int  t_spriteSheet;
      out vec4 t_color;
+flat out int  t_spriteSheet;
 flat out uint t_blending;
+flat out uint t_shaderSprite;
 
 #define SRB_OBJECT (srb.objects[a_srbIndex])
 
@@ -36,17 +37,17 @@ void main() {
     objectPosition = SRB_OBJECT.startPosition;
 
     // APPLY GROUP COMBINATION STATE
-    
     GroupCombinationState state = drb.groupCombinationStates[SRB_OBJECT.groupCombinationIndex];
     objectPosition = state.positionalTransform * objectPosition + state.offset;
     
     vertexOffset = a_positionOffset;
     objectFlags  = SRB_OBJECT.flags;
 
+    objectOpacity *= SRB_OBJECT.opacity;
     objectOpacity *= state.opacity;
+
     if ((objectFlags & OBJECT_FLAG_IS_STATIC_OBJECT) == 0)
         vertexOffset = state.localTransform * vertexOffset;
-    objectOpacity *= float(a_opacity) / 255.0;
 
     if (SRB_OBJECT.rotationSpeed != 0.0) // TODO: Just supply rotation speed in radians instead
         vertexOffset = rotatePointAroundOrigin(vertexOffset, -SRB_OBJECT.rotationSpeed * u_timer / 180 * PI);
@@ -60,9 +61,10 @@ void main() {
 
     uint colorChannel = a_colorChannel & 0xfff;
 
-    t_texCoord    = a_texCoord;
-    t_spriteSheet = a_spriteSheet;
-    t_color       = RGBA_TO_VEC4(drb.channelColors[colorChannel]);
+    t_spriteSheet  = a_spriteSheet;
+    t_color        = RGBA_TO_VEC4(drb.channelColors[colorChannel]);
+    t_shaderSprite = a_shaderSprite;
+    t_texCoord     = a_texCoord;
 
     if (a_spriteSheet == SPRITE_SHEET_GLOW && (objectFlags & OBJECT_FLAG_SPECIAL_GLOW_COLOR) != 0)
         t_color = vec4(u_specialLightBGColor, 1.0);

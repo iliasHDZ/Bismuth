@@ -5,6 +5,7 @@
 #include <glm/glm.hpp>
 #include <Geode/Geode.hpp>
 #include <chrono>
+#include <memory>
 
 #ifdef __GNUC__
 #define PACKED( __Declaration__ ) __Declaration__ __attribute__((__packed__))
@@ -36,6 +37,14 @@ namespace fs = std::filesystem;
 // TODO: Figure out how to set usize to the pointer size of this machine's architecture
 using usize = u64;
 using isize = i64;
+
+template <typename T>
+using UPtr = std::unique_ptr<T>;
+
+template <typename T, typename... Args>
+inline std::unique_ptr<T> makeUnique(Args&& ...args) {
+    return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
+}
 
 inline vec2 ccPointToGLM(const cocos2d::CCPoint& point) {
     return vec2(point.x, point.y);

@@ -10,6 +10,7 @@
 
 #include "DifferenceMode.hpp"
 #include "GroupManager.hpp"
+#include "ShaderSpriteManager.hpp"
 #include "../../resources/shaders/shared.h"
 
 using namespace geode;
@@ -17,7 +18,8 @@ using namespace geode;
 class Renderer : public cocos2d::CCNode {
 private:
     inline Renderer()
-        : objectBatch(*this), groupManager(*this), differenceMode(*this) {}
+        : objectBatch(*this), groupManager(*this), differenceMode(*this),
+          shaderSpriteManager(*this) {}
     ~Renderer() override;
 
     bool init(PlayLayer* layer);
@@ -90,6 +92,7 @@ public:
     void setEnabled(bool enabled);
 
     inline GroupManager& getGroupManager() { return groupManager; }
+    inline ShaderSpriteManager& getShaderSpriteManager() { return shaderSpriteManager; }
 
     void reset();
 
@@ -134,6 +137,8 @@ private:
     std::set<i16> disabledGroups;
 
     GroupManager groupManager;
+
+    ShaderSpriteManager shaderSpriteManager;
 
     ObjectBatch objectBatch;
     Shader* shader = nullptr;

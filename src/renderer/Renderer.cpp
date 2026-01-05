@@ -333,6 +333,8 @@ void Renderer::generateStaticRenderingBuffer(ObjectSorter& sorter) {
             objectInfo->detailHSV = convertToShaderHSV(object->m_detailColor->m_hsv);
         }
 
+        objectInfo->opacity = (object->m_opacityMod2 > 0.0) ? object->m_opacityMod2 : 1.0;
+
         objectInfo->groupCombinationIndex = groupManager.getGroupCombinationIndexForObject(object);
 
         if (object->m_isInvisibleBlock) objectInfo->flags |= OBJECT_FLAG_IS_INVISIBLE_BLOCK;

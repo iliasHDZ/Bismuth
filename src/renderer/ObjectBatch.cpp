@@ -1,5 +1,6 @@
 #include "ObjectBatch.hpp"
 #include "Geode/cocos/cocoa/CCAffineTransform.h"
+#include "Geode/cocos/sprite_nodes/CCSpriteFrame.h"
 #include "Renderer.hpp"
 #include "common.hpp"
 
@@ -44,6 +45,7 @@ void ObjectBatch::reserveForGameObject(GameObject* object) {
 void ObjectBatch::allocateReservations() {
     quads.resize(reservedQuadCount);
     currentQuadIndex = 0;
+    reservedQuadCount = 0;
 }
 
 void ObjectBatch::recieveUnpackedSprite(
@@ -104,6 +106,9 @@ void ObjectBatch::recieveUnpackedSprite(
     float dx = x1 * cr - y2 * sr2 + x;
     float dy = x1 * sr + y2 * cr2 + y;
 
+    if (currentQuadIndex >= quads.size())
+        quads.resize(currentQuadIndex + 1);
+
     auto& quad = quads[currentQuadIndex];
 
     auto objectStartPosition = ccPointToGLM(object->m_startPosition);
@@ -112,14 +117,35 @@ void ObjectBatch::recieveUnpackedSprite(
     quad.tl.positionOffset = glm::vec2(dx, dy) - objectStartPosition;
     quad.tr.positionOffset = glm::vec2(cx, cy) - objectStartPosition;
 
-    float left   = crop.origin.x;
-    float right  = crop.origin.x + crop.size.width;
-    float top    = crop.origin.y;
-    float bottom = crop.origin.y + crop.size.height;
+    u32 shaderSprite = renderer.getShaderSpriteManager().getShaderSpriteIndexOfSprite(sprite);
+
+    float left, right, top, bottom;
+    if (shaderSprite == 0) {
+        left   = crop.origin.x;
+        right  = crop.origin.x + crop.size.width;
+        top    = crop.origin.y;
+        bottom = crop.origin.y + crop.size.height;
+    } else {
+        left   = 0.0;
+        right  = 1.0;
+        top    = 1.0;
+        bottom = 0.0;
+    }
+
+    // CCSpriteFrame* spriteFrame = spriteManager.getSpriteFrameOfSprite(sprite);
+    // u32 spriteCropAttrib = spriteManager.getSpriteCropAttributeForFrame(spriteFrame);
+
+    // for (u32 i = 0; i < VERTICIES_PER_QUAD; i++)
+    //     quad.verticies[i].spriteCrop = spriteCropAttrib;
 
     if (sprite->isTextureRectRotated()) {
         if (sprite->isFlipX()) std::swap(top, bottom);
         if (sprite->isFlipY()) std::swap(left, right);
+
+        // quad.bl.spriteCrop |= 0                      | A_SPRITE_CROP_IS_TOP;
+        // quad.br.spriteCrop |= 0                      | 0;
+        // quad.tl.spriteCrop |= A_SPRITE_CROP_IS_RIGHT | A_SPRITE_CROP_IS_TOP;
+        // quad.tr.spriteCrop |= A_SPRITE_CROP_IS_RIGHT | 0;
 
         quad.bl.texCoord = { left,  top };
         quad.br.texCoord = { left,  bottom };
@@ -128,6 +154,11 @@ void ObjectBatch::recieveUnpackedSprite(
     } else {
         if (sprite->isFlipX()) std::swap(left, right);
         if (sprite->isFlipY()) std::swap(top, bottom);
+
+        // quad.bl.spriteCrop |= 0                      | 0;
+        // quad.br.spriteCrop |= A_SPRITE_CROP_IS_RIGHT | 0;
+        // quad.tl.spriteCrop |= 0                      | A_SPRITE_CROP_IS_TOP;
+        // quad.tr.spriteCrop |= A_SPRITE_CROP_IS_RIGHT | A_SPRITE_CROP_IS_TOP;
 
         quad.bl.texCoord = { left,  bottom };
         quad.br.texCoord = { right, bottom };
@@ -152,7 +183,7 @@ void ObjectBatch::recieveUnpackedSprite(
         vertex.srbIndex     = srbIndex;
         vertex.spriteSheet  = (u32)spriteSheet;
         vertex.colorChannel = colorChannel;
-        vertex.opacity      = (object->m_opacityMod2 > 0.0) ? (u8)(object->m_opacityMod2 * 255.0) : 255;
+        vertex.shaderSprite = shaderSprite;
     }
 
     currentQuadIndex++;

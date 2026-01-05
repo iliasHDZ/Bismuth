@@ -5,10 +5,9 @@
 #define GL_SHADER_STORAGE_BUFFER 0x90D2
 
 class Buffer {
-private:
+public:
     ~Buffer();
 
-public:
     inline usize getSize() const { return size; }
     inline u32 getId() const { return id; }
 

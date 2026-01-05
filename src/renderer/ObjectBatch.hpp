@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "Buffer.hpp"
+#include "Geode/cocos/textures/CCTexture2D.h"
 #include "ObjectSpriteUnpacker.hpp"
 
 using namespace geode;
@@ -16,7 +17,7 @@ using namespace geode;
     macro so you don't have duplicate code
     with the and the attrib pointer calls.
 
-    ATTRIB(attributeId, type, name)
+    ATTRIB(attributeLocation, type, name)
 
     NOTE: The positionOffset attribute is this
           vertex' offset from the position of
@@ -28,7 +29,9 @@ using namespace geode;
     ATTRIB(2, u32,  srbIndex) \
     ATTRIB(3, u16,  colorChannel) \
     ATTRIB(4, u8,   spriteSheet) \
-    ATTRIB(5, u8,   opacity)
+    ATTRIB(5, u8,   shaderSprite)
+
+//  ATTRIB(1, u32,  spriteCrop)
 
 ////////////////////////////////////////////////
 
@@ -123,6 +126,8 @@ private:
     std::vector<u32> quadsSrbIndicies;
     std::vector<ObjectIndicies> indicies;
     std::vector<ObjectIndicies> culledIndicies;
+
+    cocos2d::CCTexture2D* spriteSheetTexture;
 
     u32 vao = 0;
     u32 quadCount = 0;

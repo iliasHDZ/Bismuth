@@ -6,6 +6,9 @@
     shader code and can be used to disinguish
 */
 
+#ifndef SHADER_SHARED_H
+#define SHADER_SHARED_H
+
 #ifndef GLSL
 
 #include <common.hpp>
@@ -26,6 +29,9 @@ struct alignas(4) RGBA { u8 r, g, b, a; };
 #define TOTAL_OBJECT_COUNT 0
 
 #define GLSL_ONLY(D)
+
+#define UNIFORM_BUFFER(_BINDING) struct
+#define STORAGE_BUFFER(_BINDING) struct
 
 #else
 
@@ -68,6 +74,9 @@ vec2 rotatePointAroundOrigin(vec2 point, float angleInRadians) {
 #define GET_HIGH16(V) ( (V >> 16) & 0xffff )
 
 #define GLSL_ONLY(D) D
+
+#define UNIFORM_BUFFER(_BINDING) layout (std140, binding = _BINDING) uniform
+#define STORAGE_BUFFER(_BINDING) layout (std430, binding = _BINDING) buffer
 
 #endif
 
@@ -124,53 +133,10 @@ struct StaticObjectInfo {
     float audioScaleMin;
     float audioScaleMax;
     float fadeMargin;
+    float opacity;
     HSV baseHSV;
     HSV detailHSV;
     uint groupCombinationIndex;
-};
-
-#define SPRITE_TYPE_BASE   0
-#define SPRITE_TYPE_DETAIL 1
-#define SPRITE_TYPE_BLACK  2
-#define SPRITE_TYPE_GLOW   3
-
-struct SpriteInfo {
-    // This is the position of the bottom left vertex
-    vec2 bottomLeftPosition;
-    /*
-        You can get the positions of the 3 other verticies
-        by using the following members like so:
-        - bottomRight = bottomLeftPosition + rightVector;
-        - topLeft     = bottomLeftPosition + upVector;
-        - topRight    = bottomLeftPosition + rightVector + upVector;
-    */
-    vec2 upVector;
-    vec2 rightVector;
-    /*
-        The following two members consist of
-        2 16-bit unsigned integers combined into a single uint (32-bit).
-        The low 16-bits is the X position and the high 16-bit is the Y position.
-        The positions are pixel positions. They go from [0, 0] to [width, height].
-    */
-    uint texCoordBottomLeft;
-    uint texCoordTopRight;
-
-    /*
-        This is an index into the object info array.
-        However the highest 6 bits are extra info.
-        The highest 4 bits of this extra info specifies
-        the spritesheet this sprite is from and the
-        lower 2 specify the sprite type. The sprite
-        types can be seen above with the macros starting
-        with SPRITE_TYPE*.
-
-        SSSSttii iiiiiiii iiiiiiii iiiiiiii
-
-        S = spritesheet
-        t = sprite type (SPRITE_TYPE_* macros)
-        i = object info index
-    */
-    uint objectInfoIndexAndTypeInfo;
 };
 
 /*
@@ -185,6 +151,27 @@ struct GroupCombinationState {
     uint _padding;
 };
 
+/*
+    This contains a crop rectangle of a sprite
+    in a spritesheet.
+struct SpriteCrop {
+    *
+        For both of the following members, the
+        lower 16-bit contains the minimum value
+        and the higher 16-bit contains the maximum
+        value of the crop.
+    *
+    uint xCrop;
+    uint yCrop;
+};
+
+// This is for decoding the aSpriteCrop vertex attribute
+#define A_SPRITE_CROP_MASK             0x1fffffff
+#define A_SPRITE_CROP_IS_SHADER_SPRITE 0x20000000
+#define A_SPRITE_CROP_IS_RIGHT         0x40000000
+#define A_SPRITE_CROP_IS_TOP           0x80000000
+*/
+
 ////////////////////////////////////////////////////
 //// UNIFORM BUFFERS AND SHADER STORAGE BUFFERS ////
 ////////////////////////////////////////////////////
@@ -192,19 +179,16 @@ struct GroupCombinationState {
 #define DYNAMIC_RENDERING_BUFFER_BINDING 0
 #define STATIC_RENDERING_BUFFER_BINDING  1
 #define RENDERER_UNIFORM_BUFFER_BINDING  2
+//#define SPRITE_CROP_BUFFER_BINDING       3
 
 /*
-    This is the structure of the dynamic rendering
-    uniform buffer. This is the buffer that contains
-    the required rendering information that has
-    to change almost every frame. Stuff like the color
+    This is the dynamic rendering buffer. This
+    is the buffer that contains the required
+    rendering information that has to change
+    almost every frame. Stuff like the color
     channel colors and group transforms.
 */
-#ifdef GLSL
-layout (std430, binding = DYNAMIC_RENDERING_BUFFER_BINDING) buffer DynamicRenderingBuffer {
-#else
-struct DynamicRenderingBuffer {
-#endif
+STORAGE_BUFFER(DYNAMIC_RENDERING_BUFFER_BINDING) DynamicRenderingBuffer {
     RGBA channelColors[COLOR_CHANNEL_COUNT];
     /*
         Bitmap for whether the color channels
@@ -216,24 +200,31 @@ struct DynamicRenderingBuffer {
 } GLSL_ONLY(drb);
 
 /*
-    This is the structure of the static rendering
-    uniform buffer. This is the buffer that contains
-    the required rendering information never changes.
-    Stuff like group ids of objects and object flags.
+    This is the static rendering buffer. This is the
+    buffer that contains the required rendering
+    information never changes. Stuff like group ids
+    of objects and object flags.
 */
-#ifdef GLSL
-layout (std430, binding = STATIC_RENDERING_BUFFER_BINDING) buffer StaticRenderingBuffer {
-#else
-struct StaticRenderingBuffer {
-#endif
+STORAGE_BUFFER(STATIC_RENDERING_BUFFER_BINDING) StaticRenderingBuffer {
     StaticObjectInfo objects[];
 } GLSL_ONLY(srb);
 
-#ifdef GLSL
-layout (std140, binding = RENDERER_UNIFORM_BUFFER_BINDING) uniform RendererUniformBuffer {
-#else
-struct RendererUniformBuffer {
-#endif
+/*
+    This contains a list of all sprite crops needed in
+    rendering. Every sprite to be drawn is passed with
+    a spriteCropIndex which indexes into the array in
+    here. If index is negative, it is a shader sprite
+    instead.
+STORAGE_BUFFER(SPRITE_CROP_BUFFER_BINDING) SpriteCropBuffer {
+    SpriteCrop spriteCrops[];
+};
+*/
+
+/*
+    This is the uniform buffer used to store
+    simple uniforms.
+*/
+UNIFORM_BUFFER(RENDERER_UNIFORM_BUFFER_BINDING) RendererUniformBuffer {
     mat4  u_mvp;
     float u_timer;
     float u_audioScale;
@@ -249,6 +240,21 @@ struct RendererUniformBuffer {
     uint  u_gameStateFlags;
 };
 
+/*
+    Some sprites are so simple that they rather
+    be generated in the fragment shader then be
+    sampled from a texture. This is surprisingly
+    faster as you don't have to worry about the
+    texture cache and slow accesses.
+
+    Here are all of the shader sprites:
+*/
+#define SHADER_SPRITE_SOLID_BLOCK 1
+#define SHADER_SPRITE_SOLID_SLOPE 2
+#define SHADER_SPRITE_GRADIENT_LINEAR 3
+#define SHADER_SPRITE_GRADIENT_RADIAL 4
+#define SHADER_SPRITE_GRADIENT_RADIAL_CORNER 5
+
 #ifndef GLSL
 // Remove the changed alignments
 #undef vec2
@@ -260,4 +266,8 @@ struct RendererUniformBuffer {
 #undef bool
 #undef uint
 #undef HSV
+#undef UNIFORM_BUFFER
+#undef STORAGE_BUFFER
 #endif
+
+#endif // SHADER_SHARED_H
