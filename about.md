@@ -12,4 +12,6 @@ gameplay.
 I am currently not accepting bugfixes as there is already alot
 of broken stuff to be fixed first.
 
+2.2 levels currently don't work correctly.
+
 Icon created by Saryu
