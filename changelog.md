@@ -13,4 +13,5 @@
 - Added follow trigger support
 - Added shader sprite optimization
 - Added seperate batch node optimization
+- Added index culling optimization
 - Fixed Intel (and AMD?) GPU crashes
