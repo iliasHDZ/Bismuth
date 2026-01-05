@@ -333,4 +333,16 @@ void decomp_PlayLayer::optimized_updateVisibility(float delta) {
     // preUpdateVisibility(delta);
     m_effectManager->processColors();
     m_effectManager->calculateLightBGColor(m_effectManager->activeColorForIndex(COLOR_P1));
+
+    float audioScale;
+    if (m_skipAudioStep)
+        audioScale = FMODAudioEngine::sharedEngine()->getMeteringValue();
+    else
+        audioScale = m_audioEffectsLayer->m_audioScale;
+    
+    if (m_isSilent || (m_isPracticeMode && !m_practiceMusicSync))
+        audioScale = 0.5;
+
+    m_player1->m_audioScale = audioScale;
+    m_player2->m_audioScale = audioScale;
 }

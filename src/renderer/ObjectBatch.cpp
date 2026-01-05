@@ -1,6 +1,7 @@
 #include "ObjectBatch.hpp"
 #include "Geode/cocos/cocoa/CCAffineTransform.h"
 #include "Geode/cocos/sprite_nodes/CCSpriteFrame.h"
+#include "ObjectSpriteUnpacker.hpp"
 #include "Renderer.hpp"
 #include "common.hpp"
 
@@ -55,6 +56,9 @@ void ObjectBatch::recieveUnpackedSprite(
     const cocos2d::CCAffineTransform& transform
 ) {
     SpriteSheet spriteSheet = unpacker.getSpritesheetOfObject(object, type);
+    if (spriteSheetFilter != (SpriteSheet)-1 && spriteSheet != spriteSheetFilter)
+        return;
+
     CCTexture2D* texture = renderer.getSpriteSheetTexture(spriteSheet);
     if (texture == nullptr)
         return;

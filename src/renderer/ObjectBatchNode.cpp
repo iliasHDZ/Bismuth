@@ -5,6 +5,7 @@ using namespace geode::prelude;
 
 bool ObjectBatchNode::init(SpriteSheet spriteSheet) {
     this->spriteSheet = spriteSheet;
+    batch.setSpriteSheetFilter(spriteSheet);
     spriteSheetTexture = renderer.getSpriteSheetTexture(spriteSheet);
     return spriteSheetTexture != nullptr;
 }

@@ -28,7 +28,7 @@ private:
 public:
     class Iterator {
     public:
-        Iterator(ObjectSorter& sorter);
+        Iterator(ObjectSorter& sorter, bool includeGlow = false);
 
         inline bool isEnd() const { return layerIndex >= sorter.layers.size(); }
 
@@ -40,13 +40,25 @@ public:
         inline ObjectBatchLayer& getLayer() const { return sorter.layers[layerIndex]; }
 
     private:
+        void skipLayers();
+
+        inline bool isValidLayer() {
+            if (sorter.layers[layerIndex].objects.size() == 0)
+                return false;
+            if (!includeGlow && sorter.layers[layerIndex].sheet == SpriteSheet::GLOW)
+                return false;
+            return true;
+        }
+
+    private:
+        bool includeGlow;
         ObjectSorter& sorter;
         u32 layerIndex = 0;
         u32 objectIndex = 0;
     };
 
-    inline Iterator iterator() {
-        return Iterator(*this);
+    inline Iterator iterator(bool includeGlow = false) {
+        return Iterator(*this, includeGlow);
     }
 
 private:

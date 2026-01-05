@@ -325,7 +325,7 @@ void Renderer::generateStaticRenderingBuffer(ObjectSorter& sorter) {
     auto objects = srb->objects;
     usize index = 0;
 
-    for (auto it = sorter.iterator(); !it.isEnd(); it.next()) {
+    for (auto it = sorter.iterator(true); !it.isEnd(); it.next()) {
         auto object = it.get();
         auto objectInfo = &objects[index];
 

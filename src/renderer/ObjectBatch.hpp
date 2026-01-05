@@ -103,6 +103,10 @@ public:
         return quadCount;
     }
 
+    inline void setSpriteSheetFilter(SpriteSheet sheet) {
+        spriteSheetFilter = sheet;
+    }
+
     usize generateCulledIndicies();
 
     usize draw();
@@ -115,6 +119,8 @@ private:
     ObjectSpriteUnpacker unpacker;
 
     usize reservedQuadCount = 0;
+
+    SpriteSheet spriteSheetFilter = (SpriteSheet)-1;
 
     // This is only used when writing. After writing, it is cleared.
     std::vector<ObjectQuad> quads;

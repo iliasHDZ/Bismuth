@@ -1,4 +1,5 @@
 #include "ObjectSorter.hpp"
+#include "ObjectSpriteUnpacker.hpp"
 
 static std::array<ZLayer, 9> zlayers = {
     ZLayer::B5,
@@ -32,10 +33,19 @@ void ObjectSorter::initForGameLayer(GJBaseGameLayer* layer) {
 }
 
 void ObjectSorter::addGameObject(GameObject* object) {
-    auto layer = getLayer(object->getObjectZLayer(), object->m_baseOrDetailBlending, (SpriteSheet)object->getParentMode());
+    ZLayer zlayer = object->getObjectZLayer();
+    bool blending = object->m_baseOrDetailBlending;
+    auto sheet    = (SpriteSheet)object->getParentMode();
+
+    auto layer = getLayer(zlayer, blending, sheet);
 
     if (layer)
         layer->objects.push_back(object);
+
+    if (object->m_glowSprite) {
+        auto layer = getLayer(zlayer, blending, SpriteSheet::GLOW);
+        layer->objects.push_back(object);
+    }
 }
 
 void ObjectSorter::finalizeSorting() {
@@ -82,11 +92,10 @@ ObjectBatchLayer* ObjectSorter::getLayer(ZLayer zLayer, bool blending, SpriteShe
     return nullptr;
 }
 
-ObjectSorter::Iterator::Iterator(ObjectSorter& sorter)
+ObjectSorter::Iterator::Iterator(ObjectSorter& sorter, bool includeGlow)
     : sorter(sorter)
 {
-    while (layerIndex < sorter.layers.size() && sorter.layers[layerIndex].objects.size() == 0)
-        layerIndex++;
+    skipLayers();
 };
 
 void ObjectSorter::Iterator::next() {
@@ -94,7 +103,14 @@ void ObjectSorter::Iterator::next() {
     if (objectIndex >= sorter.layers[layerIndex].objects.size()) {
         objectIndex = 0;
         layerIndex++;
-        while (layerIndex < sorter.layers.size() && sorter.layers[layerIndex].objects.size() == 0)
-            layerIndex++;
+        skipLayers();
+    }
+}
+
+void ObjectSorter::Iterator::skipLayers() {
+    while (layerIndex < sorter.layers.size()) {
+        if (isValidLayer())
+            return;
+        layerIndex++;
     }
 }
