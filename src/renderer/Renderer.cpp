@@ -521,6 +521,8 @@ bool Renderer::useOptimizations() {
 void Renderer::setEnabled(bool enabled) {
     this->enabled = enabled;
     this->setVisible(enabled);
+    for (auto node : batchNodes)
+        node->setVisible(enabled);
     for (auto batch : CCArrayExt<CCNode*>(layer->m_batchNodes))
         batch->setVisible(!enabled);
     updateDebugText();
