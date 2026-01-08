@@ -273,6 +273,9 @@ void ObjectBatch::finishWriting() {
 }
 
 usize ObjectBatch::generateCulledIndicies() {
+    if (renderer.isPaused())
+        return prevCulledIndiciesCount;
+
     usize outIndex = 0;
 
     for (usize i = 0; i < quadCount; i++) {
@@ -284,6 +287,7 @@ usize ObjectBatch::generateCulledIndicies() {
     }
 
     indexBuffer->write(culledIndicies.data(), outIndex * sizeof(ObjectIndicies));
+    prevCulledIndiciesCount = outIndex * INDICIES_PER_QUAD;
     return outIndex * INDICIES_PER_QUAD;
 }
 

@@ -36,6 +36,13 @@ public:
     ) = 0;
 };
 
+/*
+    This class unpacks GameObject and turns them into
+    individual sprites. unpackObject unpacks the object
+    supplied to it and the class then calls
+    recieveUnpackedSprite in the supplied delegate
+    for every sprite in draw order.
+*/
 class ObjectSpriteUnpacker {
 public:
     inline ObjectSpriteUnpacker(ObjectSpriteUnpackerDelegate& delegate)

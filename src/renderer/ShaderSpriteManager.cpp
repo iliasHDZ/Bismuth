@@ -43,22 +43,22 @@ u32 SpriteManager::addRectAsSpriteCrop(const CCRect& rect) {
 */
 
 void ShaderSpriteManager::init() {
-    registerShaderSprite("block005b_05_001.png", SHADER_SPRITE_SOLID_BLOCK);
-    registerShaderSprite("block009c_base_001.png", SHADER_SPRITE_SOLID_BLOCK);
-    registerShaderSprite("lightsquare_01_01_color_001.png", SHADER_SPRITE_SOLID_BLOCK);
-    registerShaderSprite("lightsquare_01_02_color_001.png", SHADER_SPRITE_SOLID_BLOCK);
-    registerShaderSprite("lightsquare_01_03_color_001.png", SHADER_SPRITE_SOLID_BLOCK);
-    registerShaderSprite("lightsquare_01_04_color_001.png", SHADER_SPRITE_SOLID_BLOCK);
-    registerShaderSprite("lightsquare_01_05_color_001.png", SHADER_SPRITE_SOLID_BLOCK);
-    registerShaderSprite("lightsquare_01_06_color_001.png", SHADER_SPRITE_SOLID_BLOCK);
-    registerShaderSprite("lightsquare_01_07_color_001.png", SHADER_SPRITE_SOLID_BLOCK);
-    registerShaderSprite("lightsquare_01_08_color_001.png", SHADER_SPRITE_SOLID_BLOCK);
-    registerShaderSprite("whiteSquare20_001.png", SHADER_SPRITE_SOLID_BLOCK);
-    registerShaderSprite("whiteSquare40_001.png", SHADER_SPRITE_SOLID_BLOCK);
-    registerShaderSprite("whiteSquare60_001.png", SHADER_SPRITE_SOLID_BLOCK);
+    // registerShaderSprite("block005b_05_001.png", SHADER_SPRITE_SOLID_BLOCK);
+    // registerShaderSprite("block009c_base_001.png", SHADER_SPRITE_SOLID_BLOCK);
+    // registerShaderSprite("lightsquare_01_01_color_001.png", SHADER_SPRITE_SOLID_BLOCK);
+    // registerShaderSprite("lightsquare_01_02_color_001.png", SHADER_SPRITE_SOLID_BLOCK);
+    // registerShaderSprite("lightsquare_01_03_color_001.png", SHADER_SPRITE_SOLID_BLOCK);
+    // registerShaderSprite("lightsquare_01_04_color_001.png", SHADER_SPRITE_SOLID_BLOCK);
+    // registerShaderSprite("lightsquare_01_05_color_001.png", SHADER_SPRITE_SOLID_BLOCK);
+    // registerShaderSprite("lightsquare_01_06_color_001.png", SHADER_SPRITE_SOLID_BLOCK);
+    // registerShaderSprite("lightsquare_01_07_color_001.png", SHADER_SPRITE_SOLID_BLOCK);
+    // registerShaderSprite("lightsquare_01_08_color_001.png", SHADER_SPRITE_SOLID_BLOCK);
+    // registerShaderSprite("whiteSquare20_001.png", SHADER_SPRITE_SOLID_BLOCK);
+    // registerShaderSprite("whiteSquare40_001.png", SHADER_SPRITE_SOLID_BLOCK);
+    // registerShaderSprite("whiteSquare60_001.png", SHADER_SPRITE_SOLID_BLOCK);
 
-    registerShaderSprite("lighttriangle_01_02_color_001.png", SHADER_SPRITE_SOLID_SLOPE);
-    registerShaderSprite("lighttriangle_01_04_color_001.png", SHADER_SPRITE_SOLID_SLOPE);
+    // registerShaderSprite("lighttriangle_01_02_color_001.png", SHADER_SPRITE_SOLID_SLOPE);
+    // registerShaderSprite("lighttriangle_01_04_color_001.png", SHADER_SPRITE_SOLID_SLOPE);
 }
 
 u32 ShaderSpriteManager::getShaderSpriteIndexOfSprite(cocos2d::CCSprite* sprite) {

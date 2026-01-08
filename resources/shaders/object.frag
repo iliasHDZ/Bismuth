@@ -24,15 +24,24 @@ flat in uint t_shaderSprite;
 vec4 getTextureColor() {
     if (t_shaderSprite == 0)
         return texture(SPRITESHEET_TEXTURE, t_texCoord);
+    else
+        return vec4(1.0, 1.0, 1.0, 1.0);
 
-    return sampleShaderSprite(t_shaderSprite, t_texCoord);
+    // return sampleShaderSprite(t_shaderSprite, t_texCoord);
 }
 
 void main() {
+    // vec4 texColor;
+    
+    // if (t_shaderSprite == 0)
+    //     texColor = texture(SPRITESHEET_TEXTURE, t_texCoord);
+    // else
+    //     texColor = vec4(1.0, 1.0, 1.0, 1.0);
+
     if (t_blending == 0) {
-        FragColor = getTextureColor() * t_color;
+        FragColor = texture(SPRITESHEET_TEXTURE, t_texCoord) * t_color;
     } else {
-        vec4 texColor = getTextureColor();
+        vec4 texColor = texture(SPRITESHEET_TEXTURE, t_texCoord);
         FragColor = texColor * t_color;
         FragColor.rgb *= texColor.a;
     }

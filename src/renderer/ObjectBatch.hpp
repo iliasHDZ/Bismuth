@@ -125,6 +125,7 @@ private:
     // This is only used when writing. After writing, it is cleared.
     std::vector<ObjectQuad> quads;
     usize currentQuadIndex = 0;
+    usize prevCulledIndiciesCount = 0;
 
     Buffer* vertexBuffer = nullptr;
     Buffer* indexBuffer = nullptr;

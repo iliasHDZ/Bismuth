@@ -93,6 +93,10 @@ public:
         gjbglUpdateTime = time;
     }
 
+    inline bool isPaused() {
+        return layer->m_isPaused;
+    }
+
     inline bool isUseIndexCulling() const { return useIndexCulling; }
 
     bool useOptimizations();

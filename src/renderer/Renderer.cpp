@@ -382,7 +382,8 @@ void Renderer::generateStaticRenderingBuffer(ObjectSorter& sorter) {
 void Renderer::draw() {
     storeGLStates();
     prepareShaderUniforms();
-    prepareDynamicRenderingBuffer();
+    if (!isPaused())
+        prepareDynamicRenderingBuffer();
     restoreGLStates();
 
     /*
