@@ -9,10 +9,6 @@ using namespace geode::prelude;
 DifferenceMode::~DifferenceMode() {
     destroyFramebuffers();
 
-    if (fullscreenQuadBuffer)
-        Buffer::destroy(fullscreenQuadBuffer);
-    if (fullscreenQuadVAO)
-        glDeleteVertexArrays(1, &fullscreenQuadVAO);
     if (shader)
         Shader::destroy(shader);
 }
@@ -52,8 +48,7 @@ void DifferenceMode::drawSceneHook() {
     shader->setFloat("u_intensity", intensity);
     shader->setFloat("u_backdropIntensity", backdropIntensity);
 
-    glBindVertexArray(fullscreenQuadVAO);
-    glDrawArrays(GL_TRIANGLES, 0, 6);
+    drawFullscreenQuad();
 
     restoreGLStates();
 
@@ -82,15 +77,6 @@ static u32 createColorFramebuffer(u32 colorTextureAttachment) {
     return fb;
 }
 
-static float fullscreenQuad[] = {
-    -1.0, -1.0,
-    -1.0,  1.0,
-     1.0,  1.0,
-    -1.0, -1.0,
-     1.0,  1.0,
-     1.0, -1.0
-};
-
 void DifferenceMode::prepare(u32 width, u32 height) {
     storeGLStates();
 
@@ -101,20 +87,8 @@ void DifferenceMode::prepare(u32 width, u32 height) {
     bismuthTexture     = createFramebufferTexture(width, height);
     bismuthFramebuffer = createColorFramebuffer(bismuthTexture);
 
-    if (!fullscreenQuadBuffer)
-        fullscreenQuadBuffer = Buffer::createStaticDraw(fullscreenQuad, sizeof(fullscreenQuad));
-
-    if (!fullscreenQuadVAO) {
-        glGenVertexArrays(1, &fullscreenQuadVAO);
-
-        glBindVertexArray(fullscreenQuadVAO);
-        fullscreenQuadBuffer->bindAs(GL_ARRAY_BUFFER);
-        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 2, (void*)0);
-        glEnableVertexAttribArray(0);
-    }
-
     if (!shader)
-        shader = Shader::create("differenceMode.vert", "differenceMode.frag");
+        shader = Shader::create("fullscreen.vert", "differenceMode.frag");
 
     restoreGLStates();
 }
@@ -131,9 +105,8 @@ void DifferenceMode::destroyFramebuffers() {
 }
 
 #include <Geode/modify/CCDirector.hpp>
-class $modify(MyCCDirector, CCDirector) {
+class $modify(DifferenceModeCCDirector, CCDirector) {
     void drawScene() {
-
         DifferenceMode* diffMode = nullptr;
         auto renderer = Renderer::get();
         if (renderer)

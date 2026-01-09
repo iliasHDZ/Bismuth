@@ -72,3 +72,9 @@ inline bool isAMDGPU() {
 inline bool isIntelGPU() {
     return strcmp((const char*)glGetString(GL_VENDOR), "Intel") == 0;
 }
+
+/*
+    Draws a fullscreen quad.
+    VAO is handled automatically.
+*/
+void drawFullscreenQuad();

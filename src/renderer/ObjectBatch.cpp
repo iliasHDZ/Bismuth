@@ -121,7 +121,7 @@ void ObjectBatch::recieveUnpackedSprite(
     quad.tl.positionOffset = glm::vec2(dx, dy) - objectStartPosition;
     quad.tr.positionOffset = glm::vec2(cx, cy) - objectStartPosition;
 
-    u32 shaderSprite = renderer.getShaderSpriteManager().getShaderSpriteIndexOfSprite(sprite);
+    u32 shaderSprite = 0;//renderer.getShaderSpriteManager().getShaderSpriteIndexOfSprite(sprite);
 
     float left, right, top, bottom;
     if (shaderSprite == 0) {

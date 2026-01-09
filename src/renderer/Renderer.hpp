@@ -4,6 +4,7 @@
 #include <common.hpp>
 #include "ObjectBatch.hpp"
 #include "ObjectSorter.hpp"
+#include "OverdrawView.hpp"
 #include "Shader.hpp"
 #include <unordered_map>
 #include <set>
@@ -20,7 +21,7 @@ class Renderer : public cocos2d::CCNode {
 private:
     inline Renderer()
         : objectBatch(*this), groupManager(*this), differenceMode(*this),
-          shaderSpriteManager(*this) {}
+          shaderSpriteManager(*this), overdrawView(*this) {}
     ~Renderer() override;
 
     bool init(PlayLayer* layer);
@@ -89,9 +90,8 @@ public:
 
     inline bool canEnableDisableIngame() const { return ingameEnableDisable; }
 
-    inline void setGJBGLUpdateTime(u64 time) {
-        gjbglUpdateTime = time;
-    }
+    inline void setGJBGLUpdateTime(u64 time) {gjbglUpdateTime = time; }
+    inline void setTotalFrameTime(u64 time) { totalFrameTime = time; }
 
     inline bool isPaused() {
         return layer->m_isPaused;
@@ -131,6 +131,7 @@ private:
     u64 drbGenerationTime = 0;
     u64 drawFuncTime = 0;
     u64 gjbglUpdateTime = 0;
+    u64 totalFrameTime = 0;
 
     usize spritesOnScreen = 0;
 
@@ -146,6 +147,8 @@ private:
     cocos2d::CCTexture2D* spriteSheets[(i32)SpriteSheet::COUNT] = { nullptr };
 
     Ref<cocos2d::CCLabelBMFont> debugText;
+    Ref<cocos2d::CCLabelBMFont> debugTextOutline1;
+    Ref<cocos2d::CCLabelBMFont> debugTextOutline2;
 
     std::set<i16> usedGroupIds;
     std::set<i16> disabledGroups;
@@ -168,6 +171,7 @@ private:
 
     bool differenceModeEnabled = false;
     DifferenceMode differenceMode;
+    OverdrawView overdrawView;
 
     float gameTimer = 0.0;
 

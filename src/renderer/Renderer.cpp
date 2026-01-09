@@ -6,7 +6,6 @@
 #include "ObjectBatchNode.hpp"
 #include "ccTypes.h"
 #include "common.hpp"
-#include "decomp/PlayLayer.hpp"
 #include "glm/common.hpp"
 #include <Geode/Enums.hpp>
 #include <Geode/binding/GJBaseGameLayer.hpp>
@@ -15,8 +14,6 @@
 using namespace geode::prelude;
 
 static Renderer* currentRenderer;
-
-static u64 totalFrameTime = 0;
 
 Renderer::~Renderer() { terminate(); }
 
@@ -150,11 +147,28 @@ bool Renderer::init(PlayLayer* layer) {
     drb = (DynamicRenderingBuffer*)malloc(drbBuffer->getSize());
 
     debugText = CCLabelBMFont::create("", "chatFont.fnt");
+    debugTextOutline1 = CCLabelBMFont::create("", "chatFont.fnt");
+    debugTextOutline2 = CCLabelBMFont::create("", "chatFont.fnt");
+
+    debugTextOutline1->setColor({0, 0, 0});
+    debugTextOutline1->setOpacity(200);
+    debugTextOutline2->setColor({0, 0, 0});
+    debugTextOutline2->setOpacity(200);
 
     debugText->setAnchorPoint(CCPoint(0, 1));
     debugText->setPosition(1, CCDirector::get()->getWinSize().height - 8);
     debugText->setScale(0.5);
     layer->addChild(debugText, 1000);
+
+    debugTextOutline1->setAnchorPoint(CCPoint(0, 1));
+    debugTextOutline1->setPosition(1 - 0.5, CCDirector::get()->getWinSize().height - 8 - 0.5);
+    debugTextOutline1->setScale(0.5);
+    layer->addChild(debugTextOutline1, 999);
+
+    debugTextOutline2->setAnchorPoint(CCPoint(0, 1));
+    debugTextOutline2->setPosition(1 + 0.5, CCDirector::get()->getWinSize().height - 8 + 0.5);
+    debugTextOutline2->setScale(0.5);
+    layer->addChild(debugTextOutline2, 999);
 
     setZOrder(-2);
     setEnabled(true);
@@ -416,36 +430,38 @@ void Renderer::draw() {
 void Renderer::updateDebugText() {
     std::string text = "";
 
+    text += overdrawView.getDebugText();
+
     if (!enabled) {
         text += "Bismuth renderer is disabled\n";
         text += fmt::format("Total frame time: {}ms\n", (double)totalFrameTime / 1000000.0);
         text += "Press F8 to enable\n";
-        debugText->setString(text.c_str());
-        return;
+    } else {
+        if (debugTextEnabled) {
+            auto screenSize = CCDirector::get()->getWinSizeInPixels();
+
+            text += fmt::format("Bismuth renderer {}\n", Mod::get()->getVersion().toVString());
+            text += fmt::format("OpenGL {}\n", (const char*)glGetString(GL_VERSION));
+            text += fmt::format("{}\n", (const char*)glGetString(GL_RENDERER));
+            text += fmt::format("Window: {}x{}\n", screenSize.width, screenSize.height);
+            text += fmt::format("Render time: {}ms\n", (double)renderTime / 1000000.0);
+            text += fmt::format("DRB generation time: {}ms\n", (double)drbGenerationTime / 1000000.0);
+            text += fmt::format("Renderer::draw() time: {}ms\n", (double)drawFuncTime / 1000000.0);
+            text += fmt::format("GJBaseGameLayer::update() time: {}ms\n", (double)gjbglUpdateTime / 1000000.0);
+            text += fmt::format("Total frame time: {}ms\n", (double)totalFrameTime / 1000000.0);
+            text += fmt::format("Vertex buffer size: {}\n", byteSizeToString(objectBatch.getQuadCount() * sizeof(ObjectQuad)));
+            text += fmt::format("Sprites on screen: {}\n", spritesOnScreen);
+            text += fmt::format("Static rendering buffer size: {}\n", byteSizeToString(srbBuffer->getSize()));
+            text += fmt::format("Dynamic rendering buffer size: {}\n", byteSizeToString(drbBuffer->getSize()));
+            text += "\n";
+            text += "Press F3 to hide this screen";
+        } else if (differenceModeEnabled)
+            text += "_";
     }
 
-    if (debugTextEnabled) {
-        auto screenSize = CCDirector::get()->getWinSizeInPixels();
-
-        text += fmt::format("Bismuth renderer {}\n", Mod::get()->getVersion().toVString());
-        text += fmt::format("OpenGL {}\n", (const char*)glGetString(GL_VERSION));
-        text += fmt::format("{}\n", (const char*)glGetString(GL_RENDERER));
-        text += fmt::format("Window: {}x{}\n", screenSize.width, screenSize.height);
-        text += fmt::format("Render time: {}ms\n", (double)renderTime / 1000000.0);
-        text += fmt::format("DRB generation time: {}ms\n", (double)drbGenerationTime / 1000000.0);
-        text += fmt::format("Renderer::draw() time: {}ms\n", (double)drawFuncTime / 1000000.0);
-        text += fmt::format("GJBaseGameLayer::update() time: {}ms\n", (double)gjbglUpdateTime / 1000000.0);
-        text += fmt::format("Total frame time: {}ms\n", (double)totalFrameTime / 1000000.0);
-        text += fmt::format("Vertex buffer size: {}\n", byteSizeToString(objectBatch.getQuadCount() * sizeof(ObjectQuad)));
-        text += fmt::format("Sprites on screen: {}\n", spritesOnScreen);
-        text += fmt::format("Static rendering buffer size: {}\n", byteSizeToString(srbBuffer->getSize()));
-        text += fmt::format("Dynamic rendering buffer size: {}\n", byteSizeToString(drbBuffer->getSize()));
-        text += "\n";
-        text += "Press F3 to hide this screen";
-    } else if (differenceModeEnabled)
-        text += "_";
-
     debugText->setString(text.c_str());
+    debugTextOutline1->setString(text.c_str());
+    debugTextOutline2->setString(text.c_str());
 }
 
 Shader* Renderer::prepareDraw() {
@@ -532,223 +548,6 @@ void Renderer::setEnabled(bool enabled) {
 void Renderer::reset() {
     groupManager.resetGroupStates();
 }
-
-static bool newPlayLayer = false;
-
-#include <Geode/modify/PlayLayer.hpp>
-class $modify(RendererPlayLayer, PlayLayer) {
-    void setupHasCompleted() {
-        newPlayLayer = true;
-        PlayLayer::setupHasCompleted();
-        newPlayLayer = false;
-    }
-
-    // This gets called from inside PlayLayer::setupHasCompleted()
-    void resetLevel() {
-        if (newPlayLayer) {
-            auto batchLayer = this->m_objectLayer;
-            if (!batchLayer) {
-                log::error("failed to attach renderer: batch layer not found");
-                return;
-            }
-
-            auto renderer = Renderer::create(this);
-            if (renderer)
-                batchLayer->addChild(renderer, -100000);
-        }
-
-        PlayLayer::resetLevel();
-
-        auto renderer = Renderer::get();
-        if (renderer)
-            renderer->reset();
-    }
-
-    void updateVisibility(float dt) {
-        auto renderer = Renderer::get();
-        if (renderer && renderer->useOptimizations()) {
-            ((decomp_PlayLayer*)this)->optimized_updateVisibility(dt);
-            return;
-        }
-
-        PlayLayer::updateVisibility(dt);
-    }
-};
-
-static void removeDecoObjects(CCArray* array) {
-    for (u32 i = 0; i < array->count();) {
-        auto object = (GameObject*)array->objectAtIndex(i);
-        if (object->m_objectType == GameObjectType::Decoration)
-            array->removeObjectAtIndex(i);
-        else
-            i++;
-    }
-}
-
-#include <Geode/modify/GJBaseGameLayer.hpp>
-class $modify(RendererGJBaseGameLayer, GJBaseGameLayer) {
-    void update(float dt) {
-        u64 time = getTime();
-        GJBaseGameLayer::update(dt);
-        auto renderer = Renderer::get();
-        if (renderer) {
-            renderer->update(dt);
-            renderer->setGJBGLUpdateTime(getTime() - time);
-        }
-    }
-
-    void processMoveActions() {
-        auto renderer = Renderer::get();
-        if (renderer == nullptr) {
-            GJBaseGameLayer::processMoveActions();
-            return;
-        }
-
-        m_effectManager->processMoveCalculations();
-        for (auto node : m_effectManager->m_unkVector6c0) {
-            if (node->m_unk0d0)
-                continue;
-
-            int groupId = node->getTag();
-
-            renderer->getGroupManager().moveGroup(groupId, node->m_unk038, node->m_unk040);
-
-            CCArray* objects = getStaticGroup(groupId);
-            if (objects)
-                moveObjects(objects, node->m_unk038, node->m_unk040, 0);
-
-            objects = getOptimizedGroup(groupId);
-            if (objects)
-                moveObjects(objects, node->m_unk090, node->m_unk098, 0);
-        }
-    }
-
-    void processRotationActions() {
-        auto renderer = Renderer::get();
-        if (renderer == nullptr) {
-            GJBaseGameLayer::processRotationActions();
-            return;
-        }
-
-        auto eman = m_effectManager;
-        for (auto cmdObj : eman->m_unkVector5b0) {
-            if (/* cmdObj->m_unkInt204 != m_gameState.m_unkUint2 ||*/ cmdObj->m_someInterpValue1RelatedFalse)
-                continue;
-
-            i32 targetId = cmdObj->m_targetGroupID;
-            i32 centerId = cmdObj->m_centerGroupID;
-
-            auto mainObject = tryGetMainObject(centerId);
-            auto staticGroup = getStaticGroup(targetId);
-
-            float rotation;
-            if (staticGroup->count() != 0)
-                rotation = cmdObj->m_someInterpValue1RelatedOne - cmdObj->m_someInterpValue1RelatedZero;
-            else
-                rotation = cmdObj->m_someInterpValue2RelatedOne - cmdObj->m_someInterpValue2RelatedZero;
-
-            if (rotation == 0.0 && !cmdObj->m_finishRelated)
-                continue;
-
-            // Idk what the hell this does but sure
-            if (eman->m_unkMap770.find({ targetId, centerId }) != eman->m_unkMap770.end()) {
-                for (auto obj : eman->m_unkMap770[{ targetId, centerId }]) {
-                    if (obj->m_someInterpValue1RelatedFalse)
-                        continue;
-                    if (staticGroup->count() != 0)
-                        rotation += cmdObj->m_someInterpValue1RelatedOne - cmdObj->m_someInterpValue1RelatedZero;
-                    else
-                        rotation += cmdObj->m_someInterpValue2RelatedOne - cmdObj->m_someInterpValue2RelatedZero;
-                }
-            }
-
-            if (mainObject == nullptr)
-                renderer->getGroupManager().rotateGroup(targetId, rotation, cmdObj->m_lockObjectRotation);
-            else {
-                auto pos = mainObject->getUnmodifiedPosition();
-                renderer->getGroupManager().rotateGroup(targetId, rotation, cmdObj->m_lockObjectRotation, ccPointToGLM(pos));
-            }
-        }
-
-        GJBaseGameLayer::processRotationActions();
-    }
-
-    void processFollowActions() {
-        auto renderer = Renderer::get();
-        if (renderer == nullptr) {
-            GJBaseGameLayer::processFollowActions();
-            return;
-        }
-
-        auto eman = m_effectManager;
-        for (auto node : eman->m_unkVector6d8) {
-            i32 targetGroupId = node->getTag();
-            i32 followGroupId = node->m_unk074;
-
-            auto mainObject = tryGetMainObject(followGroupId);
-            if (mainObject == nullptr)
-                continue;
-
-            double moveX = 0.0, moveY = 0.0;
-            if (mainObject->m_unk4C4 == m_gameState.m_unkUint2) {
-                moveX = (mainObject->m_positionX - mainObject->m_lastPosition.x) * node->m_unk080; /* followXMod */
-                moveY = (mainObject->m_positionY - mainObject->m_lastPosition.y) * node->m_unk088; /* followYMod */
-            }
-
-            renderer->getGroupManager().moveGroup(targetGroupId, moveX, moveY);
-        }
-
-        GJBaseGameLayer::processFollowActions();
-    }
-
-    void toggleGroup(int id, bool activate) {
-        GJBaseGameLayer::toggleGroup(id, activate);
-        auto renderer = Renderer::get();
-        if (renderer)
-            renderer->getGroupManager().toggleGroup(id, activate);
-    }
-
-    void optimizeMoveGroups() {
-        GJBaseGameLayer::optimizeMoveGroups();
-
-        auto renderer = Renderer::get();
-        if (!renderer || !renderer->useOptimizations())
-            return;
-
-        for (auto array : m_optimizedGroups)
-            removeDecoObjects(array);
-        for (auto array : m_staticGroups)
-            removeDecoObjects(array);
-    }
-};
-
-#include <Geode/modify/CCKeyboardDispatcher.hpp>
-class $modify(RendererCCKeyboardDispatcher, cocos2d::CCKeyboardDispatcher) {
-    bool dispatchKeyboardMSG(cocos2d::enumKeyCodes key, bool keyDown, bool isKeyRepeat) {
-        auto renderer = Renderer::get();
-        if (renderer) {
-            if (keyDown && key == cocos2d::KEY_F3 && !isKeyRepeat)
-                renderer->toggleDebugText();
-            if (renderer->canEnableDisableIngame()) {
-                if (keyDown && key == cocos2d::KEY_F8 && !isKeyRepeat)
-                    renderer->setEnabled(!renderer->isEnabled());
-                if (keyDown && key == cocos2d::KEY_F9 && !isKeyRepeat)
-                    renderer->setDifferenceModeEnabled(!renderer->isDifferenceModeEnabled());
-            }
-        }
-
-        return cocos2d::CCKeyboardDispatcher::dispatchKeyboardMSG(key, keyDown, isKeyRepeat);
-    }
-};
-
-#include <Geode/modify/CCDisplayLinkDirector.hpp>
-class $modify(RendererCCDisplayLinkDirector, CCDisplayLinkDirector) {
-    void mainLoop() {
-        u64 prevTime = getTime();
-        CCDisplayLinkDirector::mainLoop();
-        totalFrameTime = getTime() - prevTime;
-    }
-};
 
 static i32 storedVAO, storedVBO, storedIBO, storedProgram;
 static i32 storedBlendSrcAlpha, storedBlendSrcRGB;

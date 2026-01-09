@@ -42,8 +42,5 @@ private:
     u32 bismuthTexture = 0;
     u32 bismuthFramebuffer = 0;
 
-    u32 fullscreenQuadVAO = 0;
-    Buffer* fullscreenQuadBuffer = nullptr;
-
     Shader* shader = nullptr;
 };
