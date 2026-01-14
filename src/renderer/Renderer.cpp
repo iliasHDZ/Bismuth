@@ -7,6 +7,9 @@
 #include "ccTypes.h"
 #include "common.hpp"
 #include "glm/common.hpp"
+#include "glm/fwd.hpp"
+#include "math/ConvexPolygon.hpp"
+#include "math/Line.hpp"
 #include <Geode/Enums.hpp>
 #include <Geode/binding/GJBaseGameLayer.hpp>
 #include <Geode/binding/RingObject.hpp>
@@ -108,7 +111,7 @@ bool Renderer::init(PlayLayer* layer) {
     renderedGameObjectCount = 0;
     for (auto it = sorter.iterator(); !it.isEnd(); it.next())
         renderedGameObjectCount++;
-
+    
     generateStaticRenderingBuffer(sorter);
 
     u32 groupCombCount = groupManager.getGroupCombinationCount();
@@ -219,6 +222,10 @@ void Renderer::terminate() {
     if (shader)
         Shader::destroy(shader);
     shader = nullptr;
+
+    if (basicShader)
+        Shader::destroy(basicShader);
+    basicShader = nullptr;
 
     if (drbBuffer)
         Buffer::destroy(drbBuffer);
@@ -333,15 +340,14 @@ static u32 convertToShaderHSV(const ccHSVValue& hsv) {
 }
 
 void Renderer::generateStaticRenderingBuffer(ObjectSorter& sorter) {
-    usize srbSize = sizeof(StaticObjectInfo) * renderedGameObjectCount;
-    auto srb = (StaticRenderingBuffer*)malloc(srbSize);
+    std::vector<StaticObjectInfo> objectInfos;
+    objectInfos.resize(renderedGameObjectCount);
 
-    auto objects = srb->objects;
     usize index = 0;
 
-    for (auto it = sorter.iterator(true); !it.isEnd(); it.next()) {
+    for (auto it = sorter.iterator(); !it.isEnd(); it.next()) {
         auto object = it.get();
-        auto objectInfo = &objects[index];
+        auto objectInfo = &objectInfos[index];
 
         objectInfo->startPosition = ccPointToGLM(object->m_startPosition);
         if (object->getHasRotateAction())
@@ -389,15 +395,75 @@ void Renderer::generateStaticRenderingBuffer(ObjectSorter& sorter) {
         index++;
     }
 
-    srbBuffer = Buffer::createStaticDraw(srb, srbSize);
-    free(srb);
+    srbBuffer = Buffer::createStaticDraw(objectInfos.data(), objectInfos.size() * sizeof(StaticObjectInfo));
 };
+
+static glm::vec2 linePoint = { 100, 200 };
+static float     lineAngle = 0;
+
+static ConvexPolygon polygon;
+
+static isize triangleIndex = 0;
+
+static void drawLine(Renderer* ren, const Line& line, const glm::vec4& color) {
+    glm::vec2 npp = { line.normal.y, -line.normal.x };
+
+    glm::vec2 p1 = line.firstPoint() + npp *  10000.f;
+    glm::vec2 p2 = line.firstPoint() + npp * -10000.f;
+
+    ren->drawLine(p1, p2, color);
+}
+
+static void drawCross(Renderer* ren, const glm::vec2& point, const glm::vec4& color) {
+    ren->drawLine(point + glm::vec2(-5, -5), point + glm::vec2( 5,  5), color);
+    ren->drawLine(point + glm::vec2(-5,  5), point + glm::vec2( 5, -5), color);
+}
 
 void Renderer::draw() {
     storeGLStates();
     prepareShaderUniforms();
     if (!isPaused())
         prepareDynamicRenderingBuffer();
+
+    /*
+    glm::vec2 normal { glm::cos(glm::radians(lineAngle)), glm::sin(glm::radians(lineAngle)) };
+
+    drawLine(linePoint, linePoint + normal * 10.f, glm::vec4(0, 1, 0, 1));
+
+    Line line { linePoint, normal };
+
+    ::drawLine(this, line, glm::vec4(1, 0, 0, 1));
+
+    for (const auto& mline : polygon.getLines()) {
+        ::drawLine(this, mline, glm::vec4(0.5, 0.5, 0.5, 1));
+    
+        auto inter = line.intersectionWith(mline);
+        if (inter)
+            drawCross(this, inter.value(), glm::vec4(0, 0, 1, 1));
+    }
+
+    std::vector<glm::vec2> verticies;
+
+    polygon.triangulate([&](const auto& p1, const auto& p2, const auto& p3) {
+        verticies.push_back(p1);
+        verticies.push_back(p2);
+        verticies.push_back(p3);
+    });
+
+    if (triangleIndex >= (verticies.size() / 3))
+        triangleIndex = 0;
+
+    if (verticies.size() != 0) {
+        auto p1 = verticies[triangleIndex * 3 + 0];
+        auto p2 = verticies[triangleIndex * 3 + 1];
+        auto p3 = verticies[triangleIndex * 3 + 2];
+
+        drawLine(p1, p2, glm::vec4(0, 1, 0, 1));
+        drawLine(p2, p3, glm::vec4(0, 1, 0, 1));
+        drawLine(p3, p1, glm::vec4(0, 1, 0, 1));
+    }
+    */
+
     restoreGLStates();
 
     /*
@@ -548,6 +614,91 @@ void Renderer::setEnabled(bool enabled) {
 void Renderer::reset() {
     groupManager.resetGroupStates();
 }
+
+void Renderer::drawLine(const glm::vec2& p1, const glm::vec2& p2, const glm::vec4& color) {
+    if (!basicShader)
+        basicShader = Shader::create("basic.vert", "basic.frag");
+    if (!basicShader)
+        return;
+
+    glm::vec2 data[2] = { p1, p2 };
+    Buffer* buffer = Buffer::createStaticDraw(&data, sizeof(data));
+    if (!buffer) return;
+    buffer->bindAs(GL_ARRAY_BUFFER);
+
+    u32 vao;
+    glGenVertexArrays(1, &vao);
+    glBindVertexArray(vao);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), 0);
+    glEnableVertexAttribArray(0);
+
+    kmMat4 matrixP;
+	kmMat4 matrixMV;
+	kmMat4 matrixMVP;
+	kmGLGetMatrix(KM_GL_PROJECTION, &matrixP);
+	kmGLGetMatrix(KM_GL_MODELVIEW, &matrixMV);
+	kmMat4Multiply(&matrixMVP, &matrixP, &matrixMV);
+
+    basicShader->use();
+    basicShader->setMatrix4("u_mvp", matrixMVP.mat);
+    basicShader->setVec4("u_color", color);
+
+    glDrawArrays(GL_LINES, 0, 2);
+
+    glDeleteVertexArrays(1, &vao);
+    Buffer::destroy(buffer);
+}
+
+/*
+#include <Geode/modify/CCKeyboardDispatcher.hpp>
+class $modify(RendererCCKeyboardDispatcher, CCKeyboardDispatcher) {
+    bool dispatchKeyboardMSG(enumKeyCodes key, bool keyDown, bool isKeyRepeat) {
+        auto renderer = Renderer::get();
+        if (!renderer || !keyDown)
+            return CCKeyboardDispatcher::dispatchKeyboardMSG(key, keyDown, isKeyRepeat);
+        
+        Line line { linePoint, { glm::cos(glm::radians(lineAngle)), glm::sin(glm::radians(lineAngle)) } };
+        switch (key) {
+        case KEY_J: linePoint.x -= 10; break;
+        case KEY_L: linePoint.x += 10; break;
+        case KEY_K: linePoint.y -= 10; break;
+        case KEY_I: linePoint.y += 10; break;
+        case KEY_Y: lineAngle -= 10; break;
+        case KEY_H: lineAngle += 10; break;
+        case KEY_M: if (triangleIndex != 0) triangleIndex--; break;
+        case KEY_P: triangleIndex++; break;
+        case KEY_G:
+            log::info("polygon.addLine(Line({}, glm::vec2({}, {})));", line.distance, line.normal.x, line.normal.y);
+            polygon.addLine(line);
+            break;
+        case KEY_B:
+            polygon.addLine(Line(64.45121, glm::vec2(0.76604456, -0.64278764)));
+            polygon.addLine(Line(257.2875, glm::vec2(0.76604456, 0.64278764)));
+            polygon.addLine(Line(-201.65384, glm::vec2(-0.9396926, -0.34202015)));
+            polygon.addLine(Line(-72.54986, glm::vec2(-0.9396926, 0.34202015)));
+            polygon.addLine(Line(-52.22432, glm::vec2(-0.8660254, 0.5)));
+            polygon.addLine(Line(-2.0276413, glm::vec2(-0.6427875, 0.76604456)));
+            polygon.addLine(Line(62.224335, glm::vec2(-0.4999999, 0.86602545)));
+            break;
+        case KEY_One:
+            polygon.addLine(Line(64.45121, glm::vec2(0.76604456, -0.64278764)));
+            break;
+        case KEY_Two:
+            polygon.addLine(Line(257.2875, glm::vec2(0.76604456, 0.64278764)));
+            break;
+        case KEY_Three:
+            polygon.addLine(Line(-201.65384, glm::vec2(-0.9396926, -0.34202015)));
+            break;
+        case KEY_Four:
+            polygon = ConvexPolygon();
+            break;
+        default:
+        }
+
+        return CCKeyboardDispatcher::dispatchKeyboardMSG(key, keyDown, isKeyRepeat);
+    }
+};
+*/
 
 static i32 storedVAO, storedVBO, storedIBO, storedProgram;
 static i32 storedBlendSrcAlpha, storedBlendSrcRGB;

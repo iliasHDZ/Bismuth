@@ -253,6 +253,11 @@ void Shader::setVec3(u32 location, glm::vec3 value) {
     glUniform3f(location, value.x, value.y, value.z);
 }
 
+void Shader::setVec4(u32 location, glm::vec4 value) {
+    use();
+    glUniform4f(location, value.x, value.y, value.z, value.w);
+}
+
 void Shader::setTexture(u32 location, i32 id, u32 texture) {
     use();
     glActiveTexture(GL_TEXTURE0 + id);

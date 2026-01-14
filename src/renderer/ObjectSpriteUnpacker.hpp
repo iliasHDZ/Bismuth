@@ -27,8 +27,8 @@ enum class SpriteSheet {
 
 class ObjectSpriteUnpackerDelegate {
 public:
-    // The sprites are recieved in draw order
-    virtual void recieveUnpackedSprite(
+    // The sprites are received in draw order
+    virtual void receiveUnpackedSprite(
         GameObject* parentObject,
         cocos2d::CCSprite* sprite,
         SpriteType type,

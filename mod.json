@@ -11,6 +11,9 @@
 	"dependencies": {
 		"geode.node-ids": ">=v1.20.0"
 	},
+	"tags": [
+		"performance"
+	],
 	"links": {
 		"source": "https://github.com/IliasHDZ/Bismuth",
 		"community": "https://discord.gg/B6H6ZVJx9C"

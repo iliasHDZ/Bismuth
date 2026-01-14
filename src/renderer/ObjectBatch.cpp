@@ -4,6 +4,7 @@
 #include "ObjectSpriteUnpacker.hpp"
 #include "Renderer.hpp"
 #include "common.hpp"
+#include "glm/fwd.hpp"
 
 #include <string>
 
@@ -23,33 +24,60 @@ ObjectBatch::~ObjectBatch() {
         glDeleteVertexArrays(1, &vao);
 }
 
-static u32 countSelfAndDesendantsIfDraw(CCSprite* node) {
-    u32 count = node->getDontDraw() ? 0 : 1;
+SpriteVertexTransforms ObjectBatch::getSpriteVertexTransform(
+    cocos2d::CCSprite* sprite,
+    const cocos2d::CCAffineTransform& transform,
+    SpriteSheet spriteSheet
+) {
+    CCRect crop = sprite->getTextureRect();
+    
+    CCTexture2D* texture = renderer.getSpriteSheetTexture(spriteSheet);
+    if (texture == nullptr) return {};
 
-    CCObject* child;
-    CCARRAY_FOREACH(node->getChildren(), child) {
-        count += countSelfAndDesendantsIfDraw((CCSprite*)child);
+    glm::vec2 posBottomLeft  = ccPointToGLM(CCPointApplyAffineTransform(sprite->getOffsetPosition(), transform));
+    glm::vec2 posRightVector = glm::vec2(transform.a, transform.b) * crop.size.width;
+    glm::vec2 posUpVector    = glm::vec2(transform.c, transform.d) * crop.size.height;
+
+    glm::vec2 texBottomLeft;
+    glm::vec2 texRightVector;
+    glm::vec2 texUpVector;
+
+    if (!sprite->isTextureRectRotated()) {
+        texBottomLeft  = { crop.origin.x, crop.origin.y + crop.size.height };
+        texRightVector = { crop.size.width, 0 };
+        texUpVector    = { 0, -crop.size.height };
+    } else {
+        texBottomLeft  = { crop.origin.x, crop.origin.y };
+        texRightVector = { 0, crop.size.width };
+        texUpVector    = { crop.size.height, 0 };
+    }
+    
+    if (sprite->isFlipX()) {
+        texBottomLeft += texRightVector;
+        texRightVector = -texRightVector;
+    }
+    if (sprite->isFlipY()) {
+        texBottomLeft += texUpVector;
+        texUpVector = -texUpVector;
     }
 
-    return count;
+    float contentScaleFactor = CCDirector::get()->getContentScaleFactor();
+    glm::vec2 texCoordFactor = glm::vec2(
+        contentScaleFactor / texture->getPixelsWide(),
+        contentScaleFactor / texture->getPixelsHigh()
+    );
+
+    texBottomLeft  *= texCoordFactor;
+    texRightVector *= texCoordFactor;
+    texUpVector    *= texCoordFactor;
+
+    return {
+        posBottomLeft, posRightVector, posUpVector,
+        texBottomLeft, texRightVector, texUpVector
+    };
 }
 
-void ObjectBatch::reserveForGameObject(GameObject* object) {
-    reservedQuadCount += countSelfAndDesendantsIfDraw(object);
-
-    if (object->m_glowSprite)
-        reservedQuadCount += countSelfAndDesendantsIfDraw(object->m_glowSprite);
-    if (object->m_colorSprite && object->m_colorSprite->getParent() != object)
-        reservedQuadCount += countSelfAndDesendantsIfDraw(object->m_colorSprite);
-}
-
-void ObjectBatch::allocateReservations() {
-    quads.resize(reservedQuadCount);
-    currentQuadIndex = 0;
-    reservedQuadCount = 0;
-}
-
-void ObjectBatch::recieveUnpackedSprite(
+void ObjectBatch::prepareSpriteMeshWrite(
     GameObject* object,
     cocos2d::CCSprite* sprite,
     SpriteType type,
@@ -59,16 +87,76 @@ void ObjectBatch::recieveUnpackedSprite(
     if (spriteSheetFilter != (SpriteSheet)-1 && spriteSheet != spriteSheetFilter)
         return;
 
+    u32 colorChannel = type == SpriteType::DETAIL ? object->m_activeDetailColorID : object->m_activeMainColorID;
+
+    bool isSpriteBlack = (sprite == object) ? object->m_isObjectBlack : object->m_isColorSpriteBlack;
+    if (isSpriteBlack)
+        colorChannel = COLOR_CHANNEL_BLACK;
+    if (type == SpriteType::GLOW && object->m_glowColorIsLBG)
+        colorChannel = COLOR_CHANNEL_LBG;
+    if (type == SpriteType::DETAIL)
+        colorChannel |= A_COLOR_CHANNEL_IS_SPRITE_DETAIL;
+
+    currentSpriteVertexTransforms    = getSpriteVertexTransform(sprite, transform, spriteSheet);
+    currentSpriteObjectStartPosition = ccPointToGLM(object->m_startPosition);
+
+    currentSpriteSRBIndex     = renderer.getObjectSRBIndex(object);
+    currentSpriteColorChannel = colorChannel;
+    currentSpriteSpriteSheet  = (u8)spriteSheet;
+    currentSpriteVertexIndex  = verticies.size();
+}
+
+void ObjectBatch::writeSpriteVertex(glm::vec2 pos) {
+    isize index = verticies.size();
+    verticies.resize(index + 1);
+    ObjectVertex& vertex = verticies[index];
+
+    auto& transforms = currentSpriteVertexTransforms;
+
+    vertex.positionOffset = transforms.positionRight * pos.x +
+                            transforms.positionUp    * pos.y +
+                            transforms.positionBottomLeft - currentSpriteObjectStartPosition;
+    
+    vertex.texCoord = transforms.texCoordRight * pos.x +
+                      transforms.texCoordUp    * pos.y +
+                      transforms.texCoordBottomLeft;
+
+    vertex.srbIndex     = currentSpriteSRBIndex;
+    vertex.colorChannel = currentSpriteColorChannel;
+    vertex.spriteSheet  = currentSpriteSpriteSheet;
+}
+
+void ObjectBatch::writeSpriteIndex(u32 index) {
+    indicies.push_back(currentSpriteVertexIndex + index);
+}
+
+void ObjectBatch::receiveUnpackedSprite(
+    GameObject* object,
+    cocos2d::CCSprite* sprite,
+    SpriteType type,
+    const cocos2d::CCAffineTransform& transform
+) {
+    prepareSpriteMeshWrite(object, sprite, type, transform);
+
+    writeSpriteVertex({ 0, 0 });
+    writeSpriteVertex({ 1, 0 });
+    writeSpriteVertex({ 0, 1 });
+    writeSpriteVertex({ 1, 1 });
+
+    writeSpriteIndex(QUAD_BL);
+    writeSpriteIndex(QUAD_TL);
+    writeSpriteIndex(QUAD_TR);
+    writeSpriteIndex(QUAD_BL);
+    writeSpriteIndex(QUAD_TR);
+    writeSpriteIndex(QUAD_BR);
+
+    /*
+    SpriteSheet spriteSheet = unpacker.getSpritesheetOfObject(object, type);
+    if (spriteSheetFilter != (SpriteSheet)-1 && spriteSheet != spriteSheetFilter)
+        return;
     CCTexture2D* texture = renderer.getSpriteSheetTexture(spriteSheet);
     if (texture == nullptr)
         return;
-
-    CCPoint relativeOffset = sprite->getUnflippedOffsetPosition();
-
-    if (sprite->isFlipX())
-        relativeOffset.x = -relativeOffset.x;
-    if (sprite->isFlipY())
-        relativeOffset.y = -relativeOffset.y;
 
     CCRect crop = sprite->getTextureRect();
     CCSize size = crop.size;
@@ -110,64 +198,45 @@ void ObjectBatch::recieveUnpackedSprite(
     float dx = x1 * cr - y2 * sr2 + x;
     float dy = x1 * sr + y2 * cr2 + y;
 
-    if (currentQuadIndex >= quads.size())
-        quads.resize(currentQuadIndex + 1);
+    usize index = verticies.size();
+    verticies.resize(index + 4);
 
-    auto& quad = quads[currentQuadIndex];
+    ObjectVertex* vertex = &verticies[index];
+
+    indicies.push_back(index + QUAD_BL);
+    indicies.push_back(index + QUAD_TL);
+    indicies.push_back(index + QUAD_TR);
+    indicies.push_back(index + QUAD_BL);
+    indicies.push_back(index + QUAD_TR);
+    indicies.push_back(index + QUAD_BR);
 
     auto objectStartPosition = ccPointToGLM(object->m_startPosition);
-    quad.bl.positionOffset = glm::vec2(ax, ay) - objectStartPosition;
-    quad.br.positionOffset = glm::vec2(bx, by) - objectStartPosition;
-    quad.tl.positionOffset = glm::vec2(dx, dy) - objectStartPosition;
-    quad.tr.positionOffset = glm::vec2(cx, cy) - objectStartPosition;
+    vertex[QUAD_BL].positionOffset = glm::vec2(ax, ay) - objectStartPosition;
+    vertex[QUAD_BR].positionOffset = glm::vec2(bx, by) - objectStartPosition;
+    vertex[QUAD_TL].positionOffset = glm::vec2(dx, dy) - objectStartPosition;
+    vertex[QUAD_TR].positionOffset = glm::vec2(cx, cy) - objectStartPosition;
 
-    u32 shaderSprite = 0;//renderer.getShaderSpriteManager().getShaderSpriteIndexOfSprite(sprite);
-
-    float left, right, top, bottom;
-    if (shaderSprite == 0) {
-        left   = crop.origin.x;
-        right  = crop.origin.x + crop.size.width;
-        top    = crop.origin.y;
-        bottom = crop.origin.y + crop.size.height;
-    } else {
-        left   = 0.0;
-        right  = 1.0;
-        top    = 1.0;
-        bottom = 0.0;
-    }
-
-    // CCSpriteFrame* spriteFrame = spriteManager.getSpriteFrameOfSprite(sprite);
-    // u32 spriteCropAttrib = spriteManager.getSpriteCropAttributeForFrame(spriteFrame);
-
-    // for (u32 i = 0; i < VERTICIES_PER_QUAD; i++)
-    //     quad.verticies[i].spriteCrop = spriteCropAttrib;
+    float left   = crop.origin.x;
+    float right  = crop.origin.x + crop.size.width;
+    float top    = crop.origin.y;
+    float bottom = crop.origin.y + crop.size.height;
 
     if (sprite->isTextureRectRotated()) {
         if (sprite->isFlipX()) std::swap(top, bottom);
         if (sprite->isFlipY()) std::swap(left, right);
 
-        // quad.bl.spriteCrop |= 0                      | A_SPRITE_CROP_IS_TOP;
-        // quad.br.spriteCrop |= 0                      | 0;
-        // quad.tl.spriteCrop |= A_SPRITE_CROP_IS_RIGHT | A_SPRITE_CROP_IS_TOP;
-        // quad.tr.spriteCrop |= A_SPRITE_CROP_IS_RIGHT | 0;
-
-        quad.bl.texCoord = { left,  top };
-        quad.br.texCoord = { left,  bottom };
-        quad.tl.texCoord = { right, top };
-        quad.tr.texCoord = { right, bottom };
+        vertex[QUAD_BL].texCoord = { left,  top };
+        vertex[QUAD_BR].texCoord = { left,  bottom };
+        vertex[QUAD_TL].texCoord = { right, top };
+        vertex[QUAD_TR].texCoord = { right, bottom };
     } else {
         if (sprite->isFlipX()) std::swap(left, right);
         if (sprite->isFlipY()) std::swap(top, bottom);
 
-        // quad.bl.spriteCrop |= 0                      | 0;
-        // quad.br.spriteCrop |= A_SPRITE_CROP_IS_RIGHT | 0;
-        // quad.tl.spriteCrop |= 0                      | A_SPRITE_CROP_IS_TOP;
-        // quad.tr.spriteCrop |= A_SPRITE_CROP_IS_RIGHT | A_SPRITE_CROP_IS_TOP;
-
-        quad.bl.texCoord = { left,  bottom };
-        quad.br.texCoord = { right, bottom };
-        quad.tl.texCoord = { left,  top };
-        quad.tr.texCoord = { right, top };
+        vertex[QUAD_BL].texCoord = { left,  bottom };
+        vertex[QUAD_BR].texCoord = { right, bottom };
+        vertex[QUAD_TL].texCoord = { left,  top };
+        vertex[QUAD_TR].texCoord = { right, top };
     }
 
     u32 colorChannel = type == SpriteType::DETAIL ? object->m_activeDetailColorID : object->m_activeMainColorID;
@@ -183,29 +252,13 @@ void ObjectBatch::recieveUnpackedSprite(
     usize srbIndex = renderer.getObjectSRBIndex(object);
     
     for (i32 i = 0; i < 4; i++) {
-        auto& vertex = quad.verticies[i];
-        vertex.srbIndex     = srbIndex;
-        vertex.spriteSheet  = (u32)spriteSheet;
-        vertex.colorChannel = colorChannel;
-        vertex.shaderSprite = shaderSprite;
+        auto& vtx = vertex[i];
+        vtx.srbIndex     = srbIndex;
+        vtx.spriteSheet  = (u32)spriteSheet;
+        vtx.colorChannel = colorChannel;
+        vtx.shaderSprite = 0;
     }
-
-    currentQuadIndex++;
-}
-
-void ObjectBatch::writeGameObjects(Ref<CCArray> objects) {
-    CCObject* child;
-    CCARRAY_FOREACH(objects, child) {
-        reserveForGameObject((GameObject*)child);
-    }
-
-    allocateReservations();
-
-    CCARRAY_FOREACH(objects, child) {
-        writeGameObject((GameObject*)child);
-    }
-
-    finishWriting();
+    */
 }
 
 void ObjectBatch::writeGameObject(GameObject* object) {
@@ -224,8 +277,9 @@ void ObjectBatch::writeGameObject(GameObject* object) {
 }
 
 void ObjectBatch::finishWriting() {
+    /*
     quadCount = currentQuadIndex;
-    
+
     indicies.resize(quadCount);
 
     usize vertexIndex = 0;
@@ -244,6 +298,7 @@ void ObjectBatch::finishWriting() {
 
     for (usize i = 0; i < quadCount; i++)
         quadsSrbIndicies[i] = quads[i].verticies[0].srbIndex;
+    */
 
     storeGLStates();
 
@@ -257,51 +312,58 @@ void ObjectBatch::finishWriting() {
         indexBuffer = nullptr;
     }
 
-    vertexBuffer = Buffer::createStaticDraw(quads.data(), quadCount * sizeof(ObjectQuad));
-    if (renderer.isUseIndexCulling()) {
-        culledIndicies.resize(quadCount);
-        indexBuffer = Buffer::createDynamicDraw(indicies.size() * sizeof(ObjectIndicies));
-    } else {
-        indexBuffer = Buffer::createStaticDraw(indicies.data(), indicies.size() * sizeof(ObjectIndicies));
-        indicies.clear();
-    }
+    vertexCount = verticies.size();
+    indexCount  = indicies.size();
+
+
+
+    vertexBuffer = Buffer::createStaticDraw(verticies.data(), vertexCount * sizeof(ObjectVertex));
+    // if (renderer.isUseIndexCulling()) {
+    //     culledIndicies.resize(quadCount);
+        indexBuffer = Buffer::createStaticDraw(indicies.data(), indexCount * sizeof(u32));
+    // } else {
+    //     indexBuffer = Buffer::createStaticDraw(indicies.data(), indicies.size() * sizeof(ObjectIndicies));
+    //     indicies.clear();
+    // }
+
+    indicies.clear();
+    verticies.clear();
     
     prepareVAO();
     restoreGLStates();
-
-    quads.clear();
 }
 
 usize ObjectBatch::generateCulledIndicies() {
-    if (renderer.isPaused())
-        return prevCulledIndiciesCount;
-
-    usize outIndex = 0;
-
-    for (usize i = 0; i < quadCount; i++) {
-        if (!renderer.isObjectInView(quadsSrbIndicies[i]))
-            continue;
-
-        culledIndicies[outIndex] = indicies[i];
-        outIndex++;
-    }
-
-    indexBuffer->write(culledIndicies.data(), outIndex * sizeof(ObjectIndicies));
-    prevCulledIndiciesCount = outIndex * INDICIES_PER_QUAD;
-    return outIndex * INDICIES_PER_QUAD;
+//    if (renderer.isPaused())
+//        return prevCulledIndiciesCount;
+//
+//    usize outIndex = 0;
+//
+//    for (usize i = 0; i < quadCount; i++) {
+//        if (!renderer.isObjectInView(quadsSrbIndicies[i]))
+//            continue;
+//
+//        culledIndicies[outIndex] = indicies[i];
+//        outIndex++;
+//    }
+//
+//    indexBuffer->write(culledIndicies.data(), outIndex * sizeof(ObjectIndicies));
+//    prevCulledIndiciesCount = outIndex * INDICIES_PER_QUAD;
+//    return outIndex * INDICIES_PER_QUAD;
+    return 0;
 }
 
 usize ObjectBatch::draw() {
     bind();
-    usize indiciesCount = indexCount();
-    if (renderer.isUseIndexCulling())
-        indiciesCount = generateCulledIndicies();
+//    usize indiciesCount = indexCount();
+//    if (renderer.isUseIndexCulling())
+//        indiciesCount = generateCulledIndicies();
+//
+//    if (indiciesCount == 0)
+//        return 0;
 
-    if (indiciesCount == 0)
-        return 0;
-
-    glDrawElements(GL_TRIANGLES, indiciesCount, GL_UNSIGNED_INT, nullptr);
-    return indiciesCount / INDICIES_PER_QUAD;
+    glDrawElements(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, nullptr);
+    return indexCount / INDICIES_PER_QUAD;
 }
 
 struct AttribTypeInfo {

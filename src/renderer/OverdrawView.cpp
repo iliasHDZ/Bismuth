@@ -3,7 +3,6 @@
 #include "Geode/cocos/base_nodes/CCNode.h"
 #include "Geode/cocos/platform/win32/CCEGLView.h"
 #include "Geode/cocos/platform/win32/CCGL.h"
-#include "Geode/cocos/sprite_nodes/CCSpriteBatchNode.h"
 #include "Geode/modify/Modify.hpp"
 #include "Renderer.hpp"
 
@@ -62,6 +61,7 @@ void OverdrawView::predraw() {
     glEnable(GL_STENCIL_TEST);
     glStencilFunc(GL_ALWAYS, 0, 0);
     glStencilOp(GL_KEEP, GL_INCR, GL_INCR);
+    // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     stencilEnabled = true;
 }
 
@@ -69,6 +69,7 @@ void OverdrawView::postdraw() {
     if (!enabled) return;
 
     glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 }
 
 void OverdrawView::clear() {

@@ -1,6 +1,8 @@
 #pragma once
 
+#include "Geode/cocos/cocoa/CCGeometry.h"
 #include "ccTypes.h"
+#include "glm/fwd.hpp"
 #include <cstring>
 #include <glm/glm.hpp>
 #include <Geode/Geode.hpp>

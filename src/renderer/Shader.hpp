@@ -65,6 +65,11 @@ public:
         setVec3(location(name), value);
     }
 
+    void setVec4(u32 location, glm::vec4 value);
+    inline void setVec4(const char* name, glm::vec4 value) {
+        setVec4(location(name), value);
+    }
+
     void setTexture(u32 location, i32 id, u32 texture);
     inline void setTexture(u32 location, i32 id, cocos2d::CCTexture2D* texture) {
         setTexture(location, id, texture->getName());

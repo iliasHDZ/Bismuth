@@ -8,6 +8,7 @@
 #include "Buffer.hpp"
 #include "Geode/cocos/textures/CCTexture2D.h"
 #include "ObjectSpriteUnpacker.hpp"
+#include "glm/fwd.hpp"
 
 using namespace geode;
 
@@ -30,8 +31,6 @@ using namespace geode;
     ATTRIB(3, u16,  colorChannel) \
     ATTRIB(4, u8,   spriteSheet) \
     ATTRIB(5, u8,   shaderSprite)
-
-//  ATTRIB(1, u32,  spriteCrop)
 
 ////////////////////////////////////////////////
 
@@ -61,11 +60,18 @@ struct ObjectIndicies {
     u32 indicies[INDICIES_PER_QUAD];
 };
 
-#define MAX_SPRITES 500000
-
 ////////////////////////////////////////////////
 
 class Renderer;
+
+struct SpriteVertexTransforms {
+    glm::vec2 positionBottomLeft;
+    glm::vec2 positionRight;
+    glm::vec2 positionUp;
+    glm::vec2 texCoordBottomLeft;
+    glm::vec2 texCoordRight;
+    glm::vec2 texCoordUp;
+};
 
 class ObjectBatch : public ObjectSpriteUnpackerDelegate {
 public:
@@ -73,18 +79,28 @@ public:
         : renderer(renderer), unpacker(*this) {}
     ~ObjectBatch();
 
-    void reserveForGameObject(GameObject* object);
+    SpriteVertexTransforms getSpriteVertexTransform(
+        cocos2d::CCSprite* sprite,
+        const cocos2d::CCAffineTransform& transform,
+        SpriteSheet spriteSheet
+    );
 
-    void allocateReservations();
+    void prepareSpriteMeshWrite(
+        GameObject* parentObject,
+        cocos2d::CCSprite* sprite,
+        SpriteType type,
+        const cocos2d::CCAffineTransform& transform
+    );
 
-    void recieveUnpackedSprite(
+    void writeSpriteVertex(glm::vec2 pos);
+    void writeSpriteIndex(u32 index);
+
+    void receiveUnpackedSprite(
         GameObject* parentObject,
         cocos2d::CCSprite* sprite,
         SpriteType type,
         const cocos2d::CCAffineTransform& transform
     ) override;
-
-    void writeGameObjects(Ref<cocos2d::CCArray> objects);
 
     void writeGameObject(GameObject* object);
 
@@ -95,9 +111,9 @@ public:
         indexBuffer->bindAs(GL_ELEMENT_ARRAY_BUFFER);
     }
 
-    inline u32 indexCount() {
-        return quadCount * 6;
-    }
+    // inline u32 indexCount() {
+    //     return quadCount * 6;
+    // }
 
     inline usize getQuadCount() {
         return quadCount;
@@ -118,8 +134,6 @@ private:
     Renderer& renderer;
     ObjectSpriteUnpacker unpacker;
 
-    usize reservedQuadCount = 0;
-
     SpriteSheet spriteSheetFilter = (SpriteSheet)-1;
 
     // This is only used when writing. After writing, it is cleared.
@@ -131,9 +145,20 @@ private:
     Buffer* indexBuffer = nullptr;
 
     std::vector<u32> quadsSrbIndicies;
-    std::vector<ObjectIndicies> indicies;
     std::vector<ObjectIndicies> culledIndicies;
 
     u32 vao = 0;
     u32 quadCount = 0;
+
+    std::vector<u32> indicies;
+    std::vector<ObjectVertex> verticies;
+    u32 vertexCount = 0;
+    u32 indexCount  = 0;
+
+    SpriteVertexTransforms currentSpriteVertexTransforms;
+    glm::vec2 currentSpriteObjectStartPosition;
+    u32 currentSpriteVertexIndex;
+    u32 currentSpriteSRBIndex;
+    u16 currentSpriteColorChannel;
+    u8  currentSpriteSpriteSheet;
 };

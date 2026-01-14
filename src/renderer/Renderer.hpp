@@ -80,6 +80,7 @@ public:
     }
 
     inline void toggleDebugText() {
+        geode::log::info("syjdstu");
         debugTextEnabled = !debugTextEnabled;
     }
 
@@ -107,6 +108,8 @@ public:
     inline ShaderSpriteManager& getShaderSpriteManager() { return shaderSpriteManager; }
 
     void reset();
+
+    void drawLine(const glm::vec2& p1, const glm::vec2& p2, const glm::vec4& color);
 
 public:
     static Ref<Renderer> create(PlayLayer* layer);
@@ -159,6 +162,7 @@ private:
 
     ObjectBatch objectBatch;
     Shader* shader = nullptr;
+    Shader* basicShader = nullptr;
 
     DynamicRenderingBuffer* drb = nullptr;
     Buffer* drbBuffer = nullptr;

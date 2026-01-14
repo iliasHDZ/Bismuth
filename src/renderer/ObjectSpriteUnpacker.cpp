@@ -42,7 +42,7 @@ void ObjectSpriteUnpacker::unpackSpriteRecursively(
     }
     
     if (!sprite->getDontDraw())
-        delegate.recieveUnpackedSprite(object, sprite, type, transform);
+        delegate.receiveUnpackedSprite(object, sprite, type, transform);
 
     for (auto child : spriteChildren) {
         if (child->getZOrder() >= 0)

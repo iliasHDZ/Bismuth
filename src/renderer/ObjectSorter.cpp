@@ -93,10 +93,10 @@ ObjectBatchLayer* ObjectSorter::getLayer(ZLayer zLayer, bool blending, SpriteShe
 }
 
 ObjectSorter::Iterator::Iterator(ObjectSorter& sorter, bool includeGlow)
-    : sorter(sorter)
+    : sorter(sorter), includeGlow(includeGlow)
 {
     skipLayers();
-};
+}
 
 void ObjectSorter::Iterator::next() {
     objectIndex++;
