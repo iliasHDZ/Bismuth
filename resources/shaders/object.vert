@@ -86,6 +86,11 @@ void main() {
 
     t_color.a *= objectOpacity;
 
+    if (t_color.a < 0.01) {
+        gl_Position = vec4(5, 5, 5, 1);
+        return;
+    }
+
     t_color.rgb *= t_color.a;
     if (t_blending != 0) {
         t_color.rgb *= t_color.a;

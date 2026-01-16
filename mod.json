@@ -23,7 +23,8 @@
 			"resources/shaders/*.vert",
 			"resources/shaders/*.frag",
 			"resources/shaders/*.glsl",
-			"resources/shaders/*.h"
+			"resources/shaders/*.h",
+			"resources/*.json"
 		]
 	},
 	"settings": {

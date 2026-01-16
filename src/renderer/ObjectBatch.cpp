@@ -3,9 +3,11 @@
 #include "Geode/cocos/sprite_nodes/CCSpriteFrame.h"
 #include "ObjectSpriteUnpacker.hpp"
 #include "Renderer.hpp"
+#include "SpriteMeshDictionary.hpp"
 #include "common.hpp"
 #include "glm/fwd.hpp"
-
+#include "math/ConvexList.hpp"
+#include "math/ConvexPolygon.hpp"
 #include <string>
 
 using namespace geode::prelude;
@@ -53,12 +55,12 @@ SpriteVertexTransforms ObjectBatch::getSpriteVertexTransform(
     }
     
     if (sprite->isFlipX()) {
-        texBottomLeft += texRightVector;
-        texRightVector = -texRightVector;
+        posBottomLeft += posRightVector;
+        posRightVector = -posRightVector;
     }
     if (sprite->isFlipY()) {
-        texBottomLeft += texUpVector;
-        texUpVector = -texUpVector;
+        posBottomLeft += posUpVector;
+        posUpVector = -posUpVector;
     }
 
     float contentScaleFactor = CCDirector::get()->getContentScaleFactor();
@@ -130,6 +132,19 @@ void ObjectBatch::writeSpriteIndex(u32 index) {
     indicies.push_back(currentSpriteVertexIndex + index);
 }
 
+void ObjectBatch::writeSpriteMeshFromConvexList(const ConvexList& list) {
+    u32 vertexIndex = 0;
+    list.triangulate([&](const glm::vec2& p1, const glm::vec2& p2, const glm::vec2& p3) {
+        writeSpriteVertex(p1);
+        writeSpriteVertex(p2);
+        writeSpriteVertex(p3);
+        writeSpriteIndex(vertexIndex + 0);
+        writeSpriteIndex(vertexIndex + 1);
+        writeSpriteIndex(vertexIndex + 2);
+        vertexIndex += 3;
+    });
+}
+
 void ObjectBatch::receiveUnpackedSprite(
     GameObject* object,
     cocos2d::CCSprite* sprite,
@@ -138,127 +153,23 @@ void ObjectBatch::receiveUnpackedSprite(
 ) {
     prepareSpriteMeshWrite(object, sprite, type, transform);
 
-    writeSpriteVertex({ 0, 0 });
-    writeSpriteVertex({ 1, 0 });
-    writeSpriteVertex({ 0, 1 });
-    writeSpriteVertex({ 1, 1 });
+    ConvexList* spriteMesh = SpriteMeshDictionary::getSpriteMeshForSprite(sprite);
 
-    writeSpriteIndex(QUAD_BL);
-    writeSpriteIndex(QUAD_TL);
-    writeSpriteIndex(QUAD_TR);
-    writeSpriteIndex(QUAD_BL);
-    writeSpriteIndex(QUAD_TR);
-    writeSpriteIndex(QUAD_BR);
-
-    /*
-    SpriteSheet spriteSheet = unpacker.getSpritesheetOfObject(object, type);
-    if (spriteSheetFilter != (SpriteSheet)-1 && spriteSheet != spriteSheetFilter)
-        return;
-    CCTexture2D* texture = renderer.getSpriteSheetTexture(spriteSheet);
-    if (texture == nullptr)
-        return;
-
-    CCRect crop = sprite->getTextureRect();
-    CCSize size = crop.size;
-
-    if (sprite->isTextureRectRotated()) {
-        float temp = crop.size.height;
-        crop.size.height = crop.size.width;
-        crop.size.width  = temp;
-    }
-
-    float contentScale = CCDirector::get()->getContentScaleFactor();
-
-    u32 texWidth  = texture->getPixelsWide();
-    u32 texHeight = texture->getPixelsHigh();
-
-    crop.origin.x    *= contentScale / texWidth;
-    crop.origin.y    *= contentScale / texHeight;
-    crop.size.width  *= contentScale / texWidth;
-    crop.size.height *= contentScale / texHeight;
-    
-    float x1 = sprite->getOffsetPosition().x;
-    float y1 = sprite->getOffsetPosition().y;
-
-    float x2 = x1 + size.width;
-    float y2 = y1 + size.height;
-    float x = transform.tx;
-    float y = transform.ty;
-
-    float cr  =  transform.a;
-    float sr  =  transform.b;
-    float cr2 =  transform.d;
-    float sr2 = -transform.c;
-    float ax = x1 * cr - y1 * sr2 + x;
-    float ay = x1 * sr + y1 * cr2 + y;
-    float bx = x2 * cr - y1 * sr2 + x;
-    float by = x2 * sr + y1 * cr2 + y;
-    float cx = x2 * cr - y2 * sr2 + x;
-    float cy = x2 * sr + y2 * cr2 + y;
-    float dx = x1 * cr - y2 * sr2 + x;
-    float dy = x1 * sr + y2 * cr2 + y;
-
-    usize index = verticies.size();
-    verticies.resize(index + 4);
-
-    ObjectVertex* vertex = &verticies[index];
-
-    indicies.push_back(index + QUAD_BL);
-    indicies.push_back(index + QUAD_TL);
-    indicies.push_back(index + QUAD_TR);
-    indicies.push_back(index + QUAD_BL);
-    indicies.push_back(index + QUAD_TR);
-    indicies.push_back(index + QUAD_BR);
-
-    auto objectStartPosition = ccPointToGLM(object->m_startPosition);
-    vertex[QUAD_BL].positionOffset = glm::vec2(ax, ay) - objectStartPosition;
-    vertex[QUAD_BR].positionOffset = glm::vec2(bx, by) - objectStartPosition;
-    vertex[QUAD_TL].positionOffset = glm::vec2(dx, dy) - objectStartPosition;
-    vertex[QUAD_TR].positionOffset = glm::vec2(cx, cy) - objectStartPosition;
-
-    float left   = crop.origin.x;
-    float right  = crop.origin.x + crop.size.width;
-    float top    = crop.origin.y;
-    float bottom = crop.origin.y + crop.size.height;
-
-    if (sprite->isTextureRectRotated()) {
-        if (sprite->isFlipX()) std::swap(top, bottom);
-        if (sprite->isFlipY()) std::swap(left, right);
-
-        vertex[QUAD_BL].texCoord = { left,  top };
-        vertex[QUAD_BR].texCoord = { left,  bottom };
-        vertex[QUAD_TL].texCoord = { right, top };
-        vertex[QUAD_TR].texCoord = { right, bottom };
+    if (spriteMesh) {
+        writeSpriteMeshFromConvexList(*spriteMesh);
     } else {
-        if (sprite->isFlipX()) std::swap(left, right);
-        if (sprite->isFlipY()) std::swap(top, bottom);
+        writeSpriteVertex({ 0, 0 });
+        writeSpriteVertex({ 1, 0 });
+        writeSpriteVertex({ 0, 1 });
+        writeSpriteVertex({ 1, 1 });
 
-        vertex[QUAD_BL].texCoord = { left,  bottom };
-        vertex[QUAD_BR].texCoord = { right, bottom };
-        vertex[QUAD_TL].texCoord = { left,  top };
-        vertex[QUAD_TR].texCoord = { right, top };
+        writeSpriteIndex(QUAD_BL);
+        writeSpriteIndex(QUAD_TL);
+        writeSpriteIndex(QUAD_TR);
+        writeSpriteIndex(QUAD_BL);
+        writeSpriteIndex(QUAD_TR);
+        writeSpriteIndex(QUAD_BR);
     }
-
-    u32 colorChannel = type == SpriteType::DETAIL ? object->m_activeDetailColorID : object->m_activeMainColorID;
-
-    bool isSpriteBlack = (sprite == object) ? object->m_isObjectBlack : object->m_isColorSpriteBlack;
-    if (isSpriteBlack)
-        colorChannel = COLOR_CHANNEL_BLACK;
-    if (type == SpriteType::GLOW && object->m_glowColorIsLBG)
-        colorChannel = COLOR_CHANNEL_LBG;
-    if (type == SpriteType::DETAIL)
-        colorChannel |= A_COLOR_CHANNEL_IS_SPRITE_DETAIL;
-
-    usize srbIndex = renderer.getObjectSRBIndex(object);
-    
-    for (i32 i = 0; i < 4; i++) {
-        auto& vtx = vertex[i];
-        vtx.srbIndex     = srbIndex;
-        vtx.spriteSheet  = (u32)spriteSheet;
-        vtx.colorChannel = colorChannel;
-        vtx.shaderSprite = 0;
-    }
-    */
 }
 
 void ObjectBatch::writeGameObject(GameObject* object) {

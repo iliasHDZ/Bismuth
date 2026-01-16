@@ -4,6 +4,7 @@
 #include "Geode/cocos/platform/win32/CCGL.h"
 #include "GroupManager.hpp"
 #include "ObjectBatchNode.hpp"
+#include "SpriteMeshDictionary.hpp"
 #include "ccTypes.h"
 #include "common.hpp"
 #include "glm/common.hpp"
@@ -50,32 +51,11 @@ bool Renderer::init(PlayLayer* layer) {
     spriteSheets[(i32)SpriteSheet::FIRE]     = tcache->addImage("FireSheet_01.png", false);
     spriteSheets[(i32)SpriteSheet::PIXEL]    = tcache->addImage("PixelSheet_01.png", false);
 
+    SpriteMeshDictionary::loadFromFile("spriteMeshes.json");
+
     ObjectSorter sorter;
 
     sorter.initForGameLayer(layer);
-    /*
-    for (int x = 0; x < layer->m_sections.size(); x++) {
-        if (layer->m_sections[x] == nullptr)
-            continue;
-        for (int y = 0; y < layer->m_sections[x]->size(); y++) {
-            auto section = layer->m_sections[x]->at(y);
-
-            if (section == nullptr || layer->m_sectionSizes[x] == nullptr)
-                continue;
-
-            auto size = layer->m_sectionSizes[x]->at(y);
-            
-            for (int i = 0; i < size; i++) {
-                auto object = section->at(i);
-                if (object == layer->m_anticheatSpike)
-                    continue;
-
-                sorter.addGameObject(object);
-            }
-        }
-    }
-    */
-
     log::info("Level contains {} object(s)", layer->m_objects->count());
     log::info("Sorting objects...");
     for (auto object : CCArrayExt<GameObject*>(layer->m_objects)) {

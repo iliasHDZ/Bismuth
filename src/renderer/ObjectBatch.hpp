@@ -9,6 +9,7 @@
 #include "Geode/cocos/textures/CCTexture2D.h"
 #include "ObjectSpriteUnpacker.hpp"
 #include "glm/fwd.hpp"
+#include "math/ConvexList.hpp"
 
 using namespace geode;
 
@@ -94,6 +95,8 @@ public:
 
     void writeSpriteVertex(glm::vec2 pos);
     void writeSpriteIndex(u32 index);
+
+    void writeSpriteMeshFromConvexList(const ConvexList& list);
 
     void receiveUnpackedSprite(
         GameObject* parentObject,

@@ -52,3 +52,18 @@ class $modify(CommonCCDirector, CCDirector) {
         CCDirector::purgeDirector();
     }
 };
+
+std::optional<std::string> readResourceFile(const fs::path& path) {
+    std::ifstream t(Mod::get()->getResourcesDir() / path);
+    if (!t.is_open())
+        return std::nullopt;
+
+    t.seekg(0, std::ios::end);
+    size_t size = t.tellg();
+    std::string buffer(size, ' ');
+    t.seekg(0);
+    t.read(buffer.data(), size);
+    t.close();
+
+    return buffer;
+}
