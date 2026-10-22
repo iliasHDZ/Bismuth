@@ -556,14 +556,13 @@ void Renderer::fetchBlendingStates() {
 
 Shader* Renderer::prepareDraw() {
     PROFILER_PUSH("Renderer::prepareDraw");
-    storeGLStates();
-    shader->use();
+    ccGLUseProgram(shader->getProgram());
     PROFILER_POP();
     return shader.get();
 }
 
 void Renderer::finishDraw() {
-    restoreGLStates();
+    glBindVertexArray(0);
 }
 
 void Renderer::update(float dt) {

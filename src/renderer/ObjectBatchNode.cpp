@@ -19,13 +19,13 @@ void ObjectBatchNode::draw() {
     auto renderer = Renderer::get();
 
     auto shader = renderer->prepareDraw();
-    shader->setTexture("u_spriteSheetTexture", 0, spriteSheetTexture);
+    ccGLBindTexture2D(spriteSheetTexture->getName());
 
     glEnable(GL_BLEND);
     if (layerId.blending)
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+        ccGLBlendFunc(GL_SRC_ALPHA, GL_ONE);
     else
-        glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+        ccGLBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
     renderer->getObjectBatch().draw(layerId);
 

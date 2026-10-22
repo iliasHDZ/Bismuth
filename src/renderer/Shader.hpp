@@ -26,6 +26,10 @@ public:
         glUseProgram(program);
     }
 
+    inline u32 getProgram() const {
+        return program;
+    }
+
     inline u32 location(const char* name) {
         return glGetUniformLocation(program, name);
     }
