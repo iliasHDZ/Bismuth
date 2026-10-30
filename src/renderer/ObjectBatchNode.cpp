@@ -13,9 +13,12 @@ bool ObjectBatchNode::init() {
 void ObjectBatchNode::draw() {
     if (!spriteSheetTexture)
         return;
+    auto renderer = Renderer::get();
+
+    if (!renderer->getObjectBatch().shouldDraw(layerId))
+        return;
 
     PROFILER_PUSH("ObjectBatchNode::draw");
-    auto renderer = Renderer::get();
 
     auto shader = renderer->prepareDraw();
     ccGLBindTexture2D(spriteSheetTexture->getName());

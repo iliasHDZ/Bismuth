@@ -36,6 +36,7 @@ class GroupCombination {
 public:
     GroupCombination(std::array<GroupID, 10>* groupIds, i32 count);
     GroupCombination(std::vector<GroupID> groupIds);
+    inline GroupCombination() : count(0) {}
     inline GroupCombination(const GroupCombination& c) {
         ids = c.ids;
         count = c.count;
@@ -113,7 +114,10 @@ public:
     inline u32 getGroupCombinationCount() const { return groupCombinationCount; }
     inline u32 getTransformCombinationCount() const { return transformCombinationCount; }
 
-    inline void bindGroupStateBuffer() { groupStateBuffer->bindAsStorageBuffer(GROUP_STATE_BUFFER_BINDING); }
+    inline void bindGroupStateBuffers() {
+        groupStateBuffer->bindAsStorageBuffer(GROUP_STATE_BUFFER_BINDING);
+        pulseEntryBuffer->bindAsStorageBuffer(PULSE_ENTRY_BUFFER_BINDING);
+    }
 
     inline isize getGroupStateBufferSize() { return groupCombinationCount * sizeof(GroupCombinationState); }
 
@@ -125,7 +129,7 @@ public:
 
     void fetchVanilaRotateGroups();
 
-    void prepareGroupStateBuffer();
+    void updateGroupStateBuffer();
 
     void storeGroupStates(StoredGroupStates& storage);
 
@@ -157,6 +161,12 @@ public:
 private:
     void addGroupCombination(GroupCombination& comb, GroupCombinationIndex index);
 
+    void updateAlphaValues();
+
+    void updatePulseEntries();
+
+    void pulseEntryBufferEnsureSize(usize size);
+
 private:
     Renderer& renderer;
 
@@ -165,6 +175,8 @@ private:
     // GroupCombinationState struct can be found in resources/shaders/shared.h
     GroupCombinationState* groupStates;
     UPtr<Buffer> groupStateBuffer = nullptr;
+
+    UPtr<Buffer> pulseEntryBuffer = nullptr;
 
     std::vector<bool> isGroupToggledOn;
 
@@ -182,6 +194,7 @@ private:
     //// PRE-PROCESSED GROUP INFO ////
 
     u32 groupCombinationCount;
+    std::vector<GroupCombination> groupCombinations;
     std::map<GroupCombination, GroupCombinationIndex> groupCombinationIndicies;
 
     u32 transformCombinationCount;

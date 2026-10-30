@@ -138,6 +138,8 @@ mat2 scaleMatrix(float scale) {
     M(B, 13, vec4, color) \
     M(B, 14, vec2, position) \
     M(B, 15, mat2, localTransform)
+    
+#define PULSE_ENTRY_BUFFER_BINDING 16
 
 SAO_BUFFER(RAW_SPRITE, RawSprite)
 SAO_BUFFER(PRE_CULLED_SPRITE, PreCulledSprite)
@@ -159,6 +161,7 @@ STORAGE_BUFFER(CULLED_TRI_INDEX_BUFFER) CulledTriIndexBuffer {
 #include "rawSpriteBuffer.h"
 #include "inputSpriteBuffer.h"
 #include "workGroupBuffer.h"
+#include "pulseEntryBuffer.h"
 
 /*
     This is the structure of the draw command to

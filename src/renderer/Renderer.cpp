@@ -25,6 +25,20 @@ using namespace geode::prelude;
 
 static Renderer* currentRenderer;
 
+u32 convertToShaderHSV(const ccHSVValue& hsv) {
+    u32 hue = hsv.h + 256.f;
+    u32 sat = ( hsv.s + (hsv.absoluteSaturation ? 1.0 : 0.0) ) * 127.5f;
+    u32 val = ( hsv.v + (hsv.absoluteBrightness ? 1.0 : 0.0) ) * 127.5f;
+
+    u32 ret = (hue & HSV_HUE_MASK) << HSV_HUE_BIT |
+              (sat & HSV_SAT_MASK) << HSV_SAT_BIT |
+              (val & HSV_VAL_MASK) << HSV_VAL_BIT;
+
+    if (hsv.absoluteSaturation) ret |= HSV_SAT_ADD;
+    if (hsv.absoluteBrightness) ret |= HSV_VAL_ADD;
+    return ret;
+}
+
 Renderer::~Renderer() { terminate(); }
 
 class FinishNode : public CCNode {
@@ -333,20 +347,6 @@ void Renderer::prepareColorChannelBuffer() {
     timer.end();
 }
 
-static u32 convertToShaderHSV(const ccHSVValue& hsv) {
-    u32 hue = hsv.h + 256.f;
-    u32 sat = ( hsv.s + (hsv.absoluteSaturation ? 1.0 : 0.0) ) * 127.5f;
-    u32 val = ( hsv.v + (hsv.absoluteBrightness ? 1.0 : 0.0) ) * 127.5f;
-
-    u32 ret = (hue & HSV_HUE_MASK) << HSV_HUE_BIT |
-              (sat & HSV_SAT_MASK) << HSV_SAT_BIT |
-              (val & HSV_VAL_MASK) << HSV_VAL_BIT;
-
-    if (hsv.absoluteSaturation) ret |= HSV_SAT_ADD;
-    if (hsv.absoluteBrightness) ret |= HSV_VAL_ADD;
-    return ret;
-}
-
 void Renderer::generateStaticRenderingBuffer(std::vector<GameObject*>& objects) {
     std::vector<ObjectInfo> objectInfos;
     objectInfos.resize(renderedGameObjectCount);
@@ -449,7 +449,7 @@ void Renderer::draw() {
         prepareColorChannelBuffer();
     
         // auto timer = BProfiler::start("Generate group state buffer");
-        groupManager.prepareGroupStateBuffer();
+        groupManager.updateGroupStateBuffer();
         // timer.end();
 
         // glm::vec2 bl = view.bottomLeft;
@@ -563,7 +563,7 @@ void Renderer::bindCullingComputeShaderBuffers() {
     gameStateBuffer->bindAsUniformBuffer(GAME_STATE_BUFFER_BINDING);
     srbBuffer->bindAsStorageBuffer(OBJECT_INFO_BUFFER_BINDING);
     colorChannelBufferObject->bindAsStorageBuffer(COLOR_CHANNEL_BUFFER_BINDING);
-    groupManager.bindGroupStateBuffer();
+    groupManager.bindGroupStateBuffers();
 }
 
 void Renderer::fetchBlendingStates() {

@@ -86,30 +86,33 @@ void processSprite(uint preCulledSpriteIndex) {
 
     vec4 color;
     if (colorChannel == COLOR_CHANNEL_LIGHTER) {
-        color = unpackUnorm4x8(u_channelColors[object.baseColorChannelId]);
+        color = getColorChannelColor(object.baseColorChannelId);
 
         HSVStruct hsv;
         hsv.hue = 0.0;
         hsv.sat = 0.65;
-        hsv.val = 1.15;
+        hsv.val = 0.15;
         hsv.satAdd = false;
         hsv.valAdd = true;
 
         color = applyHSVStruct(hsv, color);
     } else
-        color = unpackUnorm4x8(u_channelColors[colorChannel]);
+        color = getColorChannelColor(colorChannel);
 
     if (spriteType == SPRITE_TYPE_GLOW && (objectFlags & OBJECT_FLAG_SPECIAL_GLOW_COLOR) != 0)
         color = vec4(u_specialLightBGColor, 1.0);
-    
-    if ((objectFlags & OBJECT_FLAG_IS_INVISIBLE_BLOCK) != 0)
-        color = calculateInvisibleBlockColorAndOpacity(color);
+
+    if (state.pulseIndex != 0 && (spriteType == SPRITE_TYPE_BASE || spriteType == SPRITE_TYPE_DETAIL))
+        color = vec4(applyPulseEntries(color.rgb, state.pulseIndex, spriteType == SPRITE_TYPE_BASE), color.a);
 
     if (spriteType == SPRITE_TYPE_BASE && (objectFlags & OBJECT_FLAG_HAS_BASE_HSV) != 0) {
         color = applyHSV(object.baseHSV, color);
     } else if (spriteType == SPRITE_TYPE_DETAIL && (objectFlags & OBJECT_FLAG_HAS_DETAIL_HSV) != 0) {
         color = applyHSV(object.detailHSV, color);
     }
+    
+    if ((objectFlags & OBJECT_FLAG_IS_INVISIBLE_BLOCK) != 0)
+        color = calculateInvisibleBlockColorAndOpacity(color);
 
     color.a *= state.opacity * object.opacity;
     color.rgb *= color.a;
@@ -227,8 +230,8 @@ vec4 calculateInvisibleBlockColorAndOpacity(vec4 color) {
         color.a *= opacity.x;
     } else {
         // Might have to do some of these calculations on the cpu instead
-        vec3 colorBG  = unpackUnorm4x8(u_channelColors[COLOR_CHANNEL_BG]).rgb;
-        vec3 colorLBG = unpackUnorm4x8(u_channelColors[COLOR_CHANNEL_LBG]).rgb;
+        vec3 colorBG  = getColorChannelColor(COLOR_CHANNEL_BG).rgb;
+        vec3 colorLBG = getColorChannelColor(COLOR_CHANNEL_LBG).rgb;
 
         vec3 colorB;
         if ((colorBG.r + colorBG.g + colorBG.b) >= (150.0 / 255.0))

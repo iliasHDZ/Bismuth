@@ -189,28 +189,12 @@ void GroupManager::fetchVanilaRotateGroups() {
     }
 }
 
-void GroupManager::prepareGroupStateBuffer() {
-    PROFILER_PUSH("GroupManager::prepareGroupStateBuffer");
-    for (u32 id = 1; id <= maxGroupId; id++) {
-        if (isGroupToggledOn[id])
-            alphaValuesPerGroupId[id] = renderer.getPlayLayer()->m_effectManager->opacityModForGroup(id);
-        else
-            alphaValuesPerGroupId[id] = 0.0;
-    }
+void GroupManager::updateGroupStateBuffer() {
+    PROFILER_PUSH("GroupManager::updateGroupStateBuffer");
+    
+    updateAlphaValues();
 
-    u32* alphaFast = alphaIndexGroupIdFastStructure.data();
-    for (u32 alphaIndex = 0; alphaIndex < alphaIndiciesCount; alphaIndex++) {
-        u32 combCount = *(alphaFast++);
-        float alpha = 1.0;
-        while (combCount > 0) {
-            alpha *= alphaValuesPerGroupId[*(alphaFast++)];
-            combCount--;
-        }
-        alphaValuesPerAlphaIndex[alphaIndex] = alpha;
-    }
-
-    for (u32 combIndex = 0; combIndex < groupCombinationCount; combIndex++)
-        groupStates[combIndex].opacity = alphaValuesPerAlphaIndex[alphaIndiciesPerGroupCombinationIndex[combIndex]];
+    updatePulseEntries();
 
     groupStateBuffer->flush(0, groupStateBuffer->getSize());
     PROFILER_POP();
@@ -297,6 +281,10 @@ void GroupManager::resetGroupStates() {
 }
 
 void GroupManager::addGroupCombination(GroupCombination& comb, GroupCombinationIndex index) {
+    if (index >= groupCombinations.size())
+        groupCombinations.resize(index + 1);
+    groupCombinations[index] = comb;
+
     groupCombinationIndicies[comb] = index;
 
     for (auto groupId : comb.getSpan()) {
@@ -310,4 +298,136 @@ void GroupManager::addGroupCombination(GroupCombination& comb, GroupCombinationI
 
         groupCombinationIndiciesPerGroupId[groupId].push_back(index);
     }
+}
+
+void GroupManager::updateAlphaValues() {
+    for (u32 id = 1; id <= maxGroupId; id++) {
+        if (isGroupToggledOn[id])
+            alphaValuesPerGroupId[id] = renderer.getPlayLayer()->m_effectManager->opacityModForGroup(id);
+        else
+            alphaValuesPerGroupId[id] = 0.0;
+    }
+
+    u32* alphaFast = alphaIndexGroupIdFastStructure.data();
+    for (u32 alphaIndex = 0; alphaIndex < alphaIndiciesCount; alphaIndex++) {
+        u32 combCount = *(alphaFast++);
+        float alpha = 1.0;
+        while (combCount > 0) {
+            alpha *= alphaValuesPerGroupId[*(alphaFast++)];
+            combCount--;
+        }
+        alphaValuesPerAlphaIndex[alphaIndex] = alpha;
+    }
+
+    for (u32 combIndex = 0; combIndex < groupCombinationCount; combIndex++)
+        groupStates[combIndex].opacity = alphaValuesPerAlphaIndex[alphaIndiciesPerGroupCombinationIndex[combIndex]];
+}
+
+struct PulseEntry {
+    u32 flags = 0;
+    union {
+        u32 hsv;
+        ccColor4B color;
+    };
+
+    inline static PulseEntry fromAction(const PulseEffectAction& action) {
+        PulseEntry ret;
+
+        ret.flags |= PULSE_FLAG_IS_ACTIVE;
+        ret.flags |= (u32)(action.m_currentValue * 65535.0f) & 0xffff;
+
+        if (action.m_mainOnly)     ret.flags |= PULSE_FLAG_IS_BASE_ONLY;
+        if (action.m_detailOnly)   ret.flags |= PULSE_FLAG_IS_DETAIL_ONLY;
+        if (action.m_isDynamicHsv) ret.flags |= PULSE_FLAG_IS_DYNAMIC_HSV;
+
+        if (action.m_pulseEffectType == PulseEffectType::Hsv) {
+            ret.flags |= PULSE_FLAG_IS_HSV;
+            ret.flags |= (action.m_colorIndex & 0x3ff) << 16;
+            ret.hsv = convertToShaderHSV(action.m_hsv);
+        } else {
+            ret.color = { action.m_color.r, action.m_color.g, action.m_color.b, 255 };
+        }
+
+        return ret;
+    }
+
+    inline static PulseEntry endIndicator() { return PulseEntry(); }
+};
+
+void GroupManager::updatePulseEntries() {
+    PROFILER_PUSH("GroupManager::updatePulseEntries");
+
+    auto effectManager = renderer.getPlayLayer()->m_effectManager;
+
+    for (usize i = 0; i < getGroupCombinationCount(); i++)
+        groupStates[i].pulseIndex = 0;
+
+    std::vector<GroupCombinationIndex> pulsingGroupCombs;
+
+    for (GroupID gid = 0; gid < effectManager->m_unkVector2f0.size(); gid++) {
+        if (!effectManager->m_unkVector2f0[gid] || gid >= groupCombinationIndiciesPerGroupId.size())
+            continue;
+
+        for (const auto& groupComb : groupCombinationIndiciesPerGroupId[gid])
+            pulsingGroupCombs.push_back(groupComb);
+    }
+
+    std::vector<PulseEntry> pulseEntries;
+
+    // This is so that pulse index 0 can be skipped immediately without
+    // having to be checked
+    pulseEntries.push_back(PulseEntry::endIndicator());
+
+    for (auto groupCombIndex : pulsingGroupCombs) {
+        u32 pulseIndex = pulseEntries.size();
+
+        const auto& comb = groupCombinations[groupCombIndex];
+
+        for (GroupID gid : comb.getSpan()) {
+            if (!effectManager->m_unkVector2f0[gid])
+                continue;
+
+            const auto& pulseActions = effectManager->m_pulseEffectMap[gid];
+
+            for (const auto& action : pulseActions) {
+                if (
+                    action.m_pulseEffectType != PulseEffectType::Hsv &&
+                    action.m_pulseEffectType != PulseEffectType::Color
+                ) {
+                    continue;
+                }
+
+                pulseEntries.push_back(PulseEntry::fromAction(action));            
+            }
+        }
+
+        if (pulseIndex == pulseEntries.size())
+            continue;
+
+        pulseEntries.push_back(PulseEntry::endIndicator());
+        groupStates[groupCombIndex].pulseIndex = pulseIndex;
+    }
+
+    // log::info("Pulse entry count: {}", pulseEntries.size());
+
+    pulseEntryBufferEnsureSize(pulseEntries.size() * sizeof(PulseEntry));
+    pulseEntryBuffer->write(std::span<PulseEntry>(pulseEntries));
+    pulseEntryBuffer->flush(0, pulseEntries.size() * sizeof(PulseEntry));
+
+    PROFILER_POP();
+}
+
+#define PULSE_ENTRY_BUFFER_SIZE_STEP 32 * 1024
+
+void GroupManager::pulseEntryBufferEnsureSize(usize size) {
+    if (pulseEntryBuffer && pulseEntryBuffer->getSize() >= size)
+        return;
+
+    pulseEntryBuffer = nullptr;
+
+    usize newSize = (size / PULSE_ENTRY_BUFFER_SIZE_STEP + 1) * PULSE_ENTRY_BUFFER_SIZE_STEP;
+
+    log::info("Resized PulseEntryBuffer to {}", byteSizeToString(newSize));
+
+    pulseEntryBuffer = Buffer::createDynamicDraw("PulseEntryBuffer", newSize);
 }

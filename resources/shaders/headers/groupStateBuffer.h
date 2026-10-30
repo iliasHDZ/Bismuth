@@ -9,7 +9,7 @@ struct GroupCombinationState {
     mat2 localTransform;
     vec2 offset;
     float opacity;
-    uint _padding;
+    uint pulseIndex;
 };
 
 STORAGE_BUFFER(GROUP_STATE_BUFFER_BINDING) GroupStateBuffer {

@@ -18,3 +18,11 @@
 STORAGE_BUFFER(COLOR_CHANNEL_BUFFER_BINDING) ColorChannelBuffer {
     RGBA u_channelColors[COLOR_CHANNEL_COUNT];
 };
+
+#ifdef GLSL
+
+vec4 getColorChannelColor(uint colorChannel) {
+    return unpackUnorm4x8(u_channelColors[colorChannel]);
+}
+
+#endif // GLSL

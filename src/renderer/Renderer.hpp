@@ -17,6 +17,8 @@
 
 using namespace geode;
 
+u32 convertToShaderHSV(const cocos2d::ccHSVValue& hsv);
+
 class Renderer : public cocos2d::CCNode {
 private:
     inline Renderer()

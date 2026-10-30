@@ -94,6 +94,13 @@ public:
 
     void draw(const LayerKey& layer);
 
+    inline bool shouldDraw(const LayerKey& layer) const {
+        if (!sortedBatch) return false;
+        auto it = sortedBatch->workGroupRangePerLayerKey.find(layer);
+        return it != sortedBatch->workGroupRangePerLayerKey.end() &&
+               it->second.count > 0;
+    }
+
     inline void bind() {
         glBindVertexArray(vao);
         indexBuffer->bindAs(GL_ELEMENT_ARRAY_BUFFER);
