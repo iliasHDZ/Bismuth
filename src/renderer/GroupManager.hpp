@@ -116,7 +116,8 @@ public:
 
     inline void bindGroupStateBuffers() {
         groupStateBuffer->bindAsStorageBuffer(GROUP_STATE_BUFFER_BINDING);
-        pulseEntryBuffer->bindAsStorageBuffer(PULSE_ENTRY_BUFFER_BINDING);
+        if (pulseEntryBuffer)
+            pulseEntryBuffer->bindAsStorageBuffer(PULSE_ENTRY_BUFFER_BINDING);
     }
 
     inline isize getGroupStateBufferSize() { return groupCombinationCount * sizeof(GroupCombinationState); }

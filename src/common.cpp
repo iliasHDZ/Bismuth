@@ -24,6 +24,14 @@ bool isOpenGLAtLeastVersion(u32 major, u32 minor) {
         return false;
 
     auto rawVersion = version.substr(0, version.find_first_of(' '));
+
+    usize periodCount = 0;
+    for (auto ch : rawVersion)
+        if (ch == '.') periodCount++;
+
+    if (periodCount < 2)
+        rawVersion += ".0";
+
     auto ver = VersionInfo::parse(rawVersion);
     if (!ver)
         return false;

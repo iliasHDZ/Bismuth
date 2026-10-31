@@ -378,6 +378,8 @@ void GroupManager::updatePulseEntries() {
     // having to be checked
     pulseEntries.push_back(PulseEntry::endIndicator());
 
+    usize maxEntryCount = 0;
+
     for (auto groupCombIndex : pulsingGroupCombs) {
         u32 pulseIndex = pulseEntries.size();
 
@@ -397,7 +399,8 @@ void GroupManager::updatePulseEntries() {
                     continue;
                 }
 
-                pulseEntries.push_back(PulseEntry::fromAction(action));            
+                pulseEntries.push_back(PulseEntry::fromAction(action));     
+                maxEntryCount++;       
             }
         }
 
@@ -407,8 +410,6 @@ void GroupManager::updatePulseEntries() {
         pulseEntries.push_back(PulseEntry::endIndicator());
         groupStates[groupCombIndex].pulseIndex = pulseIndex;
     }
-
-    // log::info("Pulse entry count: {}", pulseEntries.size());
 
     pulseEntryBufferEnsureSize(pulseEntries.size() * sizeof(PulseEntry));
     pulseEntryBuffer->write(std::span<PulseEntry>(pulseEntries));
