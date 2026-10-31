@@ -321,7 +321,6 @@ void Renderer::prepareShaderUniforms() {
 }
 
 void Renderer::prepareColorChannelBuffer() {
-    auto timer = BProfiler::start("Generate color channel buffer");
     PROFILER_PUSH("Renderer::prepareColorChannelBuffer");
 
     auto effectManager = layer->m_effectManager;
@@ -334,17 +333,19 @@ void Renderer::prepareColorChannelBuffer() {
         auto id = sprite->m_colorID;
 
         auto& channelColor = colorChannelBuffer->u_channelColors[id];
-        channelColor.r = sprite->m_color.r;
-        channelColor.g = sprite->m_color.g;
-        channelColor.b = sprite->m_color.b;
+        channelColor.r = sprite->m_copyColor.r;
+        channelColor.g = sprite->m_copyColor.g;
+        channelColor.b = sprite->m_copyColor.b;
         channelColor.a = (u8)sprite->m_opacity;
+
+        // if (i == 535)
+        //     log::info("535 {} {} {} {}", sprite->m_color.r, sprite->m_color.g, sprite->m_color.b, sprite->m_opacity);
     }
 
     colorChannelBuffer->u_channelColors[COLOR_CHANNEL_BLACK] = { 0, 0, 0, 255 };
     colorChannelBufferObject->flush(0, colorChannelBufferObject->getSize());
     
     PROFILER_POP();
-    timer.end();
 }
 
 void Renderer::generateStaticRenderingBuffer(std::vector<GameObject*>& objects) {
