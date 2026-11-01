@@ -1,5 +1,7 @@
 #include "ObjectSorter.hpp"
 
+using namespace geode::prelude;
+
 static std::array<ZLayer, 9> zlayers = {
     ZLayer::B5,
     ZLayer::B4,
@@ -63,7 +65,7 @@ void ObjectSorter::tryAddLayer(GJBaseGameLayer* layer, ZLayer zlayer, bool blend
     // TODO: Fix UI objects
     cocos2d::CCNode* node = layer->parentForZLayer((i32)zlayer, blending, (i32)sheet, false);
 
-    if (!node || layer->m_batchNodes->indexOfObject(node) == UINT_MAX)
+    if (!node || sheet == SpriteSheet::SPECIAL || sheet == SpriteSheet::_UNK)
         return;
 
     layers.push_back({

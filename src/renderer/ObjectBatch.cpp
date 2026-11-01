@@ -193,6 +193,9 @@ void ObjectBatch::addSprite(
     ZLayer zLayer = object->getObjectZLayer();
     SpriteSheet spriteSheet = ObjectUtils::getSpritesheetOfObject(object, type);
 
+    log::info("{}", LayerKey {zLayer, spriteSheet, false});
+    log::info("{}", LayerKey {zLayer, spriteSheet, true});
+
     usedLayerKeys.insert({zLayer, spriteSheet, false});
     usedLayerKeys.insert({zLayer, spriteSheet, true});
 
@@ -281,7 +284,8 @@ void ObjectBatch::predraw() {
     else if (!sortedBatch) {
         workGroupScheduler.waitForJobs();
         sortedBatch = workGroupScheduler.fetchSortedBatchForBlendStates(blendStates);
-        assert(sortedBatch);
+        if (!sortedBatch)
+            return;
     }
 
     Shader* computeShader = renderer.getCullingComputeShader();

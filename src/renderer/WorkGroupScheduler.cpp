@@ -135,6 +135,12 @@ void WorkGroupScheduler::GenerationJob::generateSortedBatchForBlendStates() {
         std::scoped_lock lock(scheduler.mutex);
         spriteCount = scheduler.spriteEntries.size();
         loadAndSortSprites(scheduler.spriteEntries);
+
+        if (spriteCount <= 0) {
+            scheduler.sortedBatchesPerBlendStates[blendStates] = nullptr;
+            scheduler.finishedGenerationJobs.insert(this);
+            return;
+        }
     }
 
     inputSpriteIndicies.clear();

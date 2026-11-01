@@ -34,6 +34,26 @@ const char* zLayerAsString(ZLayer zLayer);
 
 const char* spriteSheetAsString(SpriteSheet spriteSheet);
 
+template <>
+class fmt::formatter<ZLayer> {
+public:
+    constexpr auto parse (format_parse_context& ctx) { return ctx.begin(); }
+    template <typename Context>
+    constexpr auto format (const ZLayer& value, Context& ctx) const {
+        return format_to(ctx.out(), "{}", zLayerAsString(value));
+    }
+};
+
+template <>
+class fmt::formatter<SpriteSheet> {
+public:
+    constexpr auto parse (format_parse_context& ctx) { return ctx.begin(); }
+    template <typename Context>
+    constexpr auto format (const SpriteSheet& value, Context& ctx) const {
+        return format_to(ctx.out(), "{}", spriteSheetAsString(value));
+    }
+};
+
 struct LayerKey {
     ZLayer zlayer;
     SpriteSheet spriteSheet;
@@ -65,6 +85,16 @@ struct LayerKey {
 
     static inline LayerKey getFromGlowSpriteObject(GameObject* object) {
         return { getNormalObjectZLayer(object), SpriteSheet::GLOW, true };
+    }
+};
+
+template <>
+class fmt::formatter<LayerKey> {
+public:
+    constexpr auto parse (format_parse_context& ctx) { return ctx.begin(); }
+    template <typename Context>
+    constexpr auto format (const LayerKey& value, Context& ctx) const {
+        return format_to(ctx.out(), "({}, {}, {})", value.zlayer, value.spriteSheet, value.blending);
     }
 };
 

@@ -80,6 +80,8 @@ bool Renderer::init(PlayLayer* layer, CCArray* levelObjects) {
 
     log::info("OpenGL Version: {}", (const char*)glGetString(GL_VERSION));
 
+    const char* fontTexture = GameManager::get()->getFontTexture(GameManager::get()->m_loadedFont);
+
     auto tcache = cocos2d::CCTextureCache::get();
     // TODO: Add text sheet
     spriteSheets[(i32)SpriteSheet::GAME_1]   = tcache->addImage("GJ_GameSheet.png", false);
@@ -88,6 +90,7 @@ bool Renderer::init(PlayLayer* layer, CCArray* levelObjects) {
     spriteSheets[(i32)SpriteSheet::GLOW]     = tcache->addImage("GJ_GameSheetGlow.png", false);
     spriteSheets[(i32)SpriteSheet::FIRE]     = tcache->addImage("FireSheet_01.png", false);
     spriteSheets[(i32)SpriteSheet::PIXEL]    = tcache->addImage("PixelSheet_01.png", false);
+    spriteSheets[(i32)SpriteSheet::TEXT]     = tcache->addImage(fontTexture, false);
 
     SpriteMeshDictionary::loadFromFile("spriteMeshes.json");
 
@@ -127,6 +130,7 @@ bool Renderer::init(PlayLayer* layer, CCArray* levelObjects) {
         DEBUG_LOG("  - isObjectBlack: {}", object->m_isObjectBlack);
         DEBUG_LOG("  - activeMainColorID: {}", object->m_activeMainColorID);
         DEBUG_LOG("  - activeDetailColorID: {}", object->m_activeDetailColorID);
+        DEBUG_LOG("  - childCount: {}", object->getChildrenCount());
         if (object->m_baseColor && object->m_baseColor->m_usesHSV)
             DEBUG_LOG("  - baseHSV: {} {} {} {} {}", object->m_baseColor->m_hsv.h, object->m_baseColor->m_hsv.s, object->m_baseColor->m_hsv.v, object->m_baseColor->m_hsv.absoluteSaturation, object->m_baseColor->m_hsv.absoluteBrightness);
         if (object->m_detailColor && object->m_detailColor->m_usesHSV)
@@ -255,6 +259,8 @@ void Renderer::generateBatchNodes() {
             if (!node)
                 continue;
 
+            vanillaBatchNodes.insert(node);
+
             layer->m_objectLayer->addChild(batchNode, node->getZOrder());
             batchNodes.push_back(batchNode);
         }
@@ -337,9 +343,6 @@ void Renderer::prepareColorChannelBuffer() {
         channelColor.g = sprite->m_copyColor.g;
         channelColor.b = sprite->m_copyColor.b;
         channelColor.a = (u8)sprite->m_opacity;
-
-        // if (i == 535)
-        //     log::info("535 {} {} {} {}", sprite->m_color.r, sprite->m_color.g, sprite->m_color.b, sprite->m_opacity);
     }
 
     colorChannelBuffer->u_channelColors[COLOR_CHANNEL_BLACK] = { 0, 0, 0, 255 };
@@ -613,7 +616,7 @@ void Renderer::update(float dt) {
 CCSpriteBatchNode* Renderer::getSpriteBatchNodeWithLayerId(LayerKey id) {
     CCNode* node = layer->parentForZLayer((i32)id.zlayer, id.blending, (i32)id.spriteSheet, false);
     
-    if (!node || layer->m_batchNodes->indexOfObject(node) == UINT_MAX)
+    if (!node || id.spriteSheet == SpriteSheet::SPECIAL || id.spriteSheet == SpriteSheet::_UNK)
         return nullptr;
 
     return (CCSpriteBatchNode*)node;
@@ -648,7 +651,7 @@ void Renderer::setEnabled(bool enabled) {
     this->setVisible(enabled);
     for (auto node : batchNodes)
         node->setVisible(enabled);
-    for (auto batch : CCArrayExt<CCNode*>(layer->m_batchNodes))
+    for (auto batch : vanillaBatchNodes)
         batch->setVisible(!enabled);
     updateDebugText();
 }

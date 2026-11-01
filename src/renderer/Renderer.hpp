@@ -148,6 +148,7 @@ private:
 
     glm::vec2 cameraCenterPos;
 
+    std::set<cocos2d::CCSpriteBatchNode*> vanillaBatchNodes;
     std::vector<ObjectBatchNode*> batchNodes;
 
     cocos2d::CCTexture2D* spriteSheets[(i32)SpriteSheet::COUNT] = { nullptr };
