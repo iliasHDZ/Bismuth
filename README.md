@@ -5,6 +5,8 @@ for maximum performance.
 
 Currently experimental
 
+You can try the latest builds from the discord server: https://discord.gg/mTyy8BTyS
+
 <img src="logo.png" alt="Bismuth logo" width="100"/>
 
 ## License
