@@ -25,12 +25,7 @@
 			"resources/shaders/*.comp",
 			"resources/shaders/*.h",
 			"resources/shaders/headers/*.h",
-			"resources/*.json",
-			"resources/bismuthGradient.png",
-			"resources/bismuthGradientDark.png"
-		],
-		"sprites": [
-			"resources/icon.png"
+			"resources/*.json"
 		]
 	},
 	"settings": {
