@@ -8,16 +8,27 @@
 #include "OverdrawView.hpp"
 #include "Shader.hpp"
 #include <unordered_map>
-#include <array>
-
 #include "DifferenceMode.hpp"
 #include "GroupManager.hpp"
 #include "ObjectBatchNode.hpp"
-#include "SAOBuffer.hpp"
+#include "LoadingBar.hpp"
 
 using namespace geode;
 
 u32 convertToShaderHSV(const cocos2d::ccHSVValue& hsv);
+
+#define CALL_AND_AWAIT(F) do { \
+        auto coro = (F); \
+        while (!coro.is_done()) { \
+            coro.resume(); \
+            co_await std::suspend_always{}; \
+        } \
+    } while (false)
+
+#define UPDATE_PROGRESS(Text_, Finished_, Total_) do { \
+        Renderer::get()->getLoadingBar()->updateInfo(Text_, Finished_, Total_); \
+        co_await std::suspend_always{}; \
+    } while (false)
 
 class Renderer : public cocos2d::CCNode {
 private:
@@ -26,7 +37,7 @@ private:
           overdrawView(*this) {}
     ~Renderer() override;
 
-    bool init(PlayLayer* layer, cocos2d::CCArray* objects);
+    coco::co_t init(PlayLayer* layer, cocos2d::CCArray* objects);
 
     void generateBatchNodes();
 
@@ -36,7 +47,7 @@ private:
 
     void prepareColorChannelBuffer();
 
-    void generateStaticRenderingBuffer(std::vector<GameObject*>& objects);
+    coco::co_t generateStaticRenderingBuffer(std::vector<GameObject*>& objects);
 
     void draw() override;
 
@@ -61,6 +72,8 @@ protected:
 
 public:
     void update(float dt) override;
+
+    bool stepLoad();
 
     cocos2d::CCSpriteBatchNode* getSpriteBatchNodeWithLayerId(LayerKey id);
 
@@ -110,6 +123,8 @@ public:
         return cullingComputeShader.get();
     }
 
+    inline LoadingBar* getLoadingBar() const { return loadingBar; }
+
     bool useOptimizations();
 
     void setEnabled(bool enabled);
@@ -137,6 +152,11 @@ private:
     bool enabled = false;
     bool debugTextEnabled = false;
     bool ingameEnableDisable = false;
+
+    bool initialized = false;
+
+    std::optional<coco::co_t> loadingCoroutine;
+    LoadingBar* loadingBar = nullptr;
 
     u64 rendererStartTime = 0;
 

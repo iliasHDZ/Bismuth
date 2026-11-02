@@ -71,12 +71,17 @@ GroupManager::~GroupManager() {}
 
 static std::set<GameObject*> dobjects;
 
-void GroupManager::initWithObjects(cocos2d::CCArray* objects) {
+coco::co_t GroupManager::initWithObjects(cocos2d::CCArray* objects) {
     auto emptyGroupComb = GroupCombination(std::vector<GroupID>{});
     addGroupCombination(emptyGroupComb, 0);
     GroupCombinationIndex groupCombIndex = 1;
 
-    for (auto object : CCArrayExt<GameObject*>(objects)) {
+    for (usize i = 0; i < objects->count(); i++) {
+        auto object = (GameObject*)objects->objectAtIndex(i);
+
+        if (i % 2245 == 0)
+            UPDATE_PROGRESS("Fetching group combinations", i, objects->count());
+
         std::optional<GroupID> targetGroupId = getTargetGroupIdOfTransformingTrigger(object);
 
         if (targetGroupId.has_value())
@@ -95,14 +100,20 @@ void GroupManager::initWithObjects(cocos2d::CCArray* objects) {
     }
 
     groupCombinationCount = groupCombIndex;
+    log::info("Number of unique group combinations: {}", groupCombinationCount);
 
     u32 transformCombIndex = 0;
     u32 alphaCombIndex     = 0;
 
     alphaIndiciesPerGroupCombinationIndex.resize(groupCombinationCount);
 
-    for (auto object : CCArrayExt<GameObject*>(objects)) {
-        GroupCombination comb = GroupCombination(object);
+    usize i = 0;
+    for (auto comb : groupCombinations) {
+        auto object = (GameObject*)objects->objectAtIndex(i);
+
+        if ((i++) % 2557 == 0)
+            UPDATE_PROGRESS("Optimizing group structures", i, groupCombinations.size());
+
         auto combIndex = groupCombinationIndicies[comb];
 
         GroupCombination transformComb = comb;
@@ -143,6 +154,7 @@ void GroupManager::initWithObjects(cocos2d::CCArray* objects) {
     isGroupToggledOn.resize(maxGroupId + 1, true);
 
     fetchVanilaRotateGroups();
+    co_return;
 }
     
 GroupCombinationIndex GroupManager::getGroupCombinationIndexForObject(GameObject* object) {
@@ -418,7 +430,7 @@ void GroupManager::updatePulseEntries() {
     PROFILER_POP();
 }
 
-#define PULSE_ENTRY_BUFFER_SIZE_STEP 32 * 1024
+#define PULSE_ENTRY_BUFFER_SIZE_STEP (32 * 1024)
 
 void GroupManager::pulseEntryBufferEnsureSize(usize size) {
     if (pulseEntryBuffer && pulseEntryBuffer->getSize() >= size)

@@ -90,7 +90,7 @@ public:
 
     ~GroupManager();
 
-    void initWithObjects(cocos2d::CCArray* objects);
+    coco::co_t initWithObjects(cocos2d::CCArray* objects);
     
     /*
         Objects with the same group ids always have

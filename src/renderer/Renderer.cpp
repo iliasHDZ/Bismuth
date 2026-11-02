@@ -45,15 +45,11 @@ class FinishNode : public CCNode {
 public:
     void draw() {
         if (currentRenderer)
-            currentRenderer->finish();        
+            currentRenderer->finish();
     }
 };
 
-bool Renderer::init(PlayLayer* layer, CCArray* levelObjects) {
-    if (currentRenderer)
-        return false;
-    currentRenderer = this;
-    
+coco::co_t Renderer::init(PlayLayer* layer, CCArray* levelObjects) {
     if (!isOpenGLAtLeastVersion(4, 3)) {
         Notification::create(
             "Your device doesn't support the required OpenGL 4.3\nPlease update your drivers",
@@ -61,7 +57,7 @@ bool Renderer::init(PlayLayer* layer, CCArray* levelObjects) {
             5.0f
         )->show();
         log::error("Device doesn't support OpenGL 4.3. OpenGL Version: {}", (const char*)glGetString(GL_VERSION));
-        return false;
+        co_return;
     }
 
     if (!hasLoadedNewerOpenGLFunctions())
@@ -74,7 +70,7 @@ bool Renderer::init(PlayLayer* layer, CCArray* levelObjects) {
     auto size = CCDirector::get()->getWinSize();
 
     if (!Mod::get()->getSettingValue<bool>("enabled"))
-        return false;
+        co_return;
 
     ingameEnableDisable = Mod::get()->getSettingValue<bool>("ingame_enable");
 
@@ -94,7 +90,7 @@ bool Renderer::init(PlayLayer* layer, CCArray* levelObjects) {
 
     SpriteMeshDictionary::loadFromFile("spriteMeshes.json");
 
-    groupManager.initWithObjects(levelObjects);
+    CALL_AND_AWAIT(groupManager.initWithObjects(levelObjects));
 
     ObjectSorter sorter;
     sorter.initForGameLayer(layer);
@@ -103,7 +99,10 @@ bool Renderer::init(PlayLayer* layer, CCArray* levelObjects) {
 
     log::info("Level contains {} object(s)", levelObjects->count());
     log::info("Sorting objects...");
-    for (auto object : CCArrayExt<GameObject*>(levelObjects)) {
+
+    for (usize i = 0; i < levelObjects->count(); i++) {
+        auto object = (GameObject*)levelObjects->objectAtIndex(i);
+
         if (object == layer->m_anticheatSpike) {
             DEBUG_LOG("- anti-cheat spike");
             continue;
@@ -111,6 +110,9 @@ bool Renderer::init(PlayLayer* layer, CCArray* levelObjects) {
 
         if (object->isTrigger() || object->m_isHide || object->m_objectID == GUIDE_OBJECT_ID)
             continue;
+
+        if (i % 2557 == 0)
+            UPDATE_PROGRESS("Loading objects", i, levelObjects->count());
 
         DEBUG_LOG("- {}, id: {}", (void*)object, object->m_objectID);
         DEBUG_LOG("  - rotation: {}, {}", object->m_startRotationX, object->m_startRotationY);
@@ -147,8 +149,8 @@ bool Renderer::init(PlayLayer* layer, CCArray* levelObjects) {
     log::info("Generating static rendering buffer....");
 
     renderedGameObjectCount = objects.size();
-    
-    generateStaticRenderingBuffer(objects);
+
+    CALL_AND_AWAIT(generateStaticRenderingBuffer(objects));
 
     u32 groupCombCount = groupManager.getGroupCombinationCount();
     log::info("{} group combinations detected", groupCombCount);
@@ -160,8 +162,12 @@ bool Renderer::init(PlayLayer* layer, CCArray* levelObjects) {
 
     fetchBlendingStates();
 
-    for (auto object : objects)
+    usize i = 0;
+    for (auto object : objects) {
+        if ((i++) % 2557 == 0)
+            UPDATE_PROGRESS("Generating sprites", i, objects.size());
         objectBatch.writeGameObject(object);
+    }
     objectBatch.finishWriting();
     generateBatchNodes();
 
@@ -175,24 +181,24 @@ bool Renderer::init(PlayLayer* layer, CCArray* levelObjects) {
     log::info("Compiling shaders...");
     shader = Shader::create("objectDrawing.vert", "objectDrawing.frag", shaderMacroVariables);
     if (!shader)
-        return false;
+        co_return;
 
     log::info("Compiled objectDrawing shader");
 
     cullingComputeShader = Shader::createCompute("objectCulling.comp", shaderMacroVariables);
     if (!cullingComputeShader)
-        return false;
+        co_return;
 
     log::info("Compiled objectCulling shader");
 
     colorChannelBufferObject = Buffer::createDynamicDraw("ColorChannelBuffer", sizeof(ColorChannelBuffer));
     if (!colorChannelBufferObject)
-        return false;
+        co_return;
     colorChannelBuffer = (ColorChannelBuffer*)colorChannelBufferObject->mapWriteOnly();
 
     gameStateBuffer = Buffer::createDynamicDraw("GameStateBuffer", sizeof(GameStateBuffer));
     if (!gameStateBuffer)
-        return false;
+        co_return;
 
     debugText = CCLabelBMFont::create("", "chatFont.fnt");
     debugTextOutline1 = CCLabelBMFont::create("", "chatFont.fnt");
@@ -246,8 +252,13 @@ bool Renderer::init(PlayLayer* layer, CCArray* levelObjects) {
         )->show();
     }
 
+    layer->m_objectLayer->addChild(this, -100000);
+
+    layer->resetLevel();
+
     log::info("Renderer initialized");
-    return true;
+    initialized = true;
+    co_return;
 }
 
 void Renderer::generateBatchNodes() {
@@ -268,6 +279,11 @@ void Renderer::generateBatchNodes() {
 }
 
 void Renderer::terminate() {
+    while (loadingCoroutine && !loadingCoroutine->is_done()) {
+        loadingCoroutine->resume();
+        coco::scheduler_t::instance().run();
+    }
+
     glDeleteQueries(1, &timeElapsedQuery);
     currentRenderer = nullptr;
     log::info("Renderer terminated");
@@ -351,9 +367,13 @@ void Renderer::prepareColorChannelBuffer() {
     PROFILER_POP();
 }
 
-void Renderer::generateStaticRenderingBuffer(std::vector<GameObject*>& objects) {
+coco::co_t Renderer::generateStaticRenderingBuffer(std::vector<GameObject*>& objects) {
     std::vector<ObjectInfo> objectInfos;
     objectInfos.resize(renderedGameObjectCount);
+
+    log::info("preyield 0");
+    co_await std::suspend_always{};
+    log::info("postyield 0");
 
     usize index = 0;
 
@@ -613,6 +633,32 @@ void Renderer::update(float dt) {
     cameraCenterPos = ccPointToGLM(gstate.m_cameraPosition2 + CCPoint(layer->m_cameraWidth * 0.5, layer->m_cameraHeight * 0.5));
 }
 
+bool Renderer::stepLoad() {
+    if (!loadingCoroutine)
+        return true;
+
+    // log::info("STEP START");
+
+    loadingCoroutine.value().resume();
+    coco::scheduler_t::instance().run();
+
+    // log::info("STEP END");
+
+    if (loadingCoroutine.value().is_done()){
+        log::info("done!");
+        loadingBar = nullptr;
+        release();
+
+        if (!initialized)
+            log::error("Failed to initialize renderer");
+        
+        loadingCoroutine = std::nullopt;
+        return true;
+    }
+    
+    return false;
+}
+
 CCSpriteBatchNode* Renderer::getSpriteBatchNodeWithLayerId(LayerKey id) {
     CCNode* node = layer->parentForZLayer((i32)id.zlayer, id.blending, (i32)id.spriteSheet, false);
     
@@ -624,15 +670,16 @@ CCSpriteBatchNode* Renderer::getSpriteBatchNodeWithLayerId(LayerKey id) {
 
 Ref<Renderer> Renderer::create(PlayLayer* layer, CCArray* objects) {
     auto ren = new Renderer;
+    currentRenderer = ren;
 
-    if (ren->init(layer, objects)) {
-        ren->autorelease();
-        return ren;
-    }
-    
-    log::error("Failed to initialize renderer");
-    delete ren;
-    return nullptr;
+    ren->loadingBar = LoadingBar::create();
+    ren->loadingBar->show();
+
+    ren->loadingCoroutine = ren->init(layer, objects);
+
+    ren->autorelease();
+    ren->retain();
+    return ren;
 }
 
 Ref<Renderer> Renderer::get() {

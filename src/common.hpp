@@ -10,6 +10,7 @@
 #include <chrono>
 #include <memory>
 #include <stdint.h>
+#include "ext/coco.h"
 
 #define MOVE_TRIGGER_ID   901
 #define ALPHA_TRIGGER_ID  1007
@@ -71,6 +72,10 @@ extern std::chrono::steady_clock::time_point modStartTime;
 
 inline u64 getTime() {
     return (std::chrono::high_resolution_clock::now() - modStartTime).count();
+}
+
+inline double getTimeSeconds() {
+    return (double)getTime() / 1000000.0f;
 }
 
 inline usize alignUp(usize value, usize align) {

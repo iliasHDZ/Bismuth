@@ -8,43 +8,33 @@
 using namespace geode::prelude;
 
 static bool newPlayLayer = false;
-// static CCArray* allGameObjects = nullptr;
 
 #include <Geode/modify/PlayLayer.hpp>
 class $modify(RendererPlayLayer, PlayLayer) {
+    void processCreateObjectsFromSetup() {
+        auto renderer = Renderer::get();
+        if (!renderer)
+            return PlayLayer::processCreateObjectsFromSetup();
+
+        if (renderer->stepLoad())
+            m_loadingProgress = 1.0f;
+    }
+
     void setupHasCompleted() {
         newPlayLayer = true;
         PlayLayer::setupHasCompleted();
         newPlayLayer = false;
+        Renderer::create(this, m_objects);
+        m_loadingProgress = 0.99f;
     }
 
-    bool init(GJGameLevel *level, bool useReplay, bool dontCreateObjects) {
-        // if (!allGameObjects) {
-        //     allGameObjects = CCArray::create();
-        //     allGameObjects->retain();
-        // }
-        return PlayLayer::init(level, useReplay, dontCreateObjects);
-    }
-
-    // This gets called from inside PlayLayer::setupHasCompleted()
     void resetLevel() {
-        if (newPlayLayer) {
-            auto batchLayer = this->m_objectLayer;
-            if (!batchLayer) {
-                log::error("failed to attach renderer: batch layer not found");
-                return;
-            }
-
-            auto renderer = Renderer::create(this, m_objects);
-            if (renderer)
-                batchLayer->addChild(renderer, -100000);
-        }
-
         auto renderer = Renderer::get();
         if (renderer)
             renderer->reset();
 
-        PlayLayer::resetLevel();
+        if (!newPlayLayer)
+            PlayLayer::resetLevel();
     }
 
     void updateVisibility(float dt) {
@@ -96,30 +86,6 @@ class $modify(MyCheckpointObject, CheckpointObject) {
         m_fields.self()->checkpoint = this;
         return true;
     }
-};
-
-#include <Geode/modify/GameObject.hpp>
-class $modify(MyGameObject, GameObject) {
-    /*
-    static GameObject* objectFromVector(
-        gd::vector<gd::string>& propValues,
-        gd::vector<void*>& propIsPresent,
-        GJBaseGameLayer* gameLayer,
-        bool lowDetail
-    ) {
-        GameObject* ret = GameObject::objectFromVector(propValues, propIsPresent, gameLayer, lowDetail);
-        if (!GameManager::get()->m_playLayer)
-            return ret;
-
-        allGameObjects->addObject(ret);
-        ret->retain();
-
-        if (ret->m_objectType == GameObjectType::Decoration)
-            return ret;
-        
-        return ret;
-    }
-    */
 };
 
 static void removeDecoObjects(CCArray* array) {
