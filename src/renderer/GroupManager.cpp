@@ -101,8 +101,7 @@ void GroupManager::initWithObjects(cocos2d::CCArray* objects) {
 
     alphaIndiciesPerGroupCombinationIndex.resize(groupCombinationCount);
 
-    for (auto object : CCArrayExt<GameObject*>(objects)) {
-        GroupCombination comb = GroupCombination(object);
+    for (auto comb : groupCombinations) {
         auto combIndex = groupCombinationIndicies[comb];
 
         GroupCombination transformComb = comb;
@@ -418,7 +417,7 @@ void GroupManager::updatePulseEntries() {
     PROFILER_POP();
 }
 
-#define PULSE_ENTRY_BUFFER_SIZE_STEP 32 * 1024
+#define PULSE_ENTRY_BUFFER_SIZE_STEP (32 * 1024)
 
 void GroupManager::pulseEntryBufferEnsureSize(usize size) {
     if (pulseEntryBuffer && pulseEntryBuffer->getSize() >= size)
