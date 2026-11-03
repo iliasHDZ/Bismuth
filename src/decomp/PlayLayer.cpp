@@ -2,6 +2,7 @@
 #include <Geode/Geode.hpp>
 #include <Geode/binding/EffectGameObject.hpp>
 #include "PlayLayer.hpp"
+#include <ObjectUtils.hpp>
 
 #include <algorithm>
 
@@ -12,7 +13,7 @@
 
 #define OBJECT_BREAKABLE_BLOCK 143
 
-using namespace cocos2d;
+using namespace geode::prelude;
 
 /*
 class changed_DynamicBitset {
@@ -348,4 +349,7 @@ void decomp_PlayLayer::optimized_updateVisibility(float delta) {
 
     m_player1->m_audioScale = audioScale;
     m_player2->m_audioScale = audioScale;
+
+    for (auto checkpoint : CCArrayExt<CheckpointObject*, false>(m_checkpointArray))
+        checkpoint->getObject()->activateObject();
 }
