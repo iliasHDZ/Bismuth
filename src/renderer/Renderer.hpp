@@ -51,14 +51,6 @@ private:
     friend class FinishNode;
     friend class ObjectBatch;
 
-protected:
-    Shader* prepareDraw();
-
-    void finishDraw();
-
-    friend class GroupManager;
-    friend class ObjectBatchNode;
-
 public:
     void update(float dt) override;
 
@@ -106,9 +98,8 @@ public:
 
     inline ObjectBatch& getObjectBatch() { return objectBatch; }
 
-    inline Shader* getCullingComputeShader() const {
-        return cullingComputeShader.get();
-    }
+    inline Shader* getCullingComputeShader() const { return cullingComputeShader.get(); }
+    inline Shader* getDrawingShader() const { return shader.get(); }
 
     bool useOptimizations();
 

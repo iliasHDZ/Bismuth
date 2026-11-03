@@ -124,22 +124,21 @@ mat2 scaleMatrix(float scale) {
 #define GAME_STATE_BUFFER_BINDING        3
 #define INPUT_SPRITE_BUFFER_BINDING      4
 #define WORK_GROUP_BUFFER_BINDING        5
-#define CULLED_INDEX_BUFFER_BINDING      6
-#define DRAW_COMMAND_BUFFER_BINDING      7
-#define SPRITE_REMAP_BUFFER_BINDING      8
-#define VERTEX_BUFFER_BINDING            9
-#define CULLED_TRI_INDEX_BUFFER          10
+#define DRAW_COMMAND_BUFFER_BINDING      6
+#define SPRITE_REMAP_BUFFER_BINDING      7
+#define VERTEX_BUFFER_BINDING            8
+#define CULLED_TRI_INDEX_BUFFER          9
 
 #define PRE_CULLED_SPRITE(B, M) \
-    M(B, 11, vec2, startPosition) \
-    M(B, 12, uint, groupCombinationIndex)
+    M(B, 10, vec2, startPosition) \
+    M(B, 11, uint, groupCombinationIndex)
 
 #define RAW_SPRITE(B, M) \
-    M(B, 13, vec4, color) \
-    M(B, 14, vec2, position) \
-    M(B, 15, mat2, localTransform)
+    M(B, 12, vec4, color) \
+    M(B, 13, vec2, position) \
+    M(B, 14, mat2, localTransform)
     
-#define PULSE_ENTRY_BUFFER_BINDING 16
+#define PULSE_ENTRY_BUFFER_BINDING 15
 
 SAO_BUFFER(RAW_SPRITE, RawSprite)
 SAO_BUFFER(PRE_CULLED_SPRITE, PreCulledSprite)

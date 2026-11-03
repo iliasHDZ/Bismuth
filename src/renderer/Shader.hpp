@@ -22,6 +22,12 @@ public:
 
     static UPtr<Shader> createCompute(const fs::path& path, std::map<std::string, std::string> macroVariables = {});
 
+    inline bool isInUse() const {
+        i32 boundProgram;
+        glGetIntegerv(GL_CURRENT_PROGRAM, &boundProgram);
+        return boundProgram == program;
+    }
+
     inline void use() {
         cocos2d::ccGLUseProgram(program);
     }

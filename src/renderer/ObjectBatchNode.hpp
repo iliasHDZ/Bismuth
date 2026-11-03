@@ -10,22 +10,15 @@ public:
     inline ObjectBatchNode(const LayerKey& id)
         : layerId(id) {}
 
-    bool init() override;
-
     void draw() override;
 
 public:
     static inline Ref<ObjectBatchNode> create(const LayerKey& id) {
         auto ret = new ObjectBatchNode(id);
-        if (ret->init()) {
-            ret->autorelease();
-            return ret;
-        }
-        delete ret;
-        return nullptr;
+        ret->autorelease();
+        return ret;
     }
 
 private:
     LayerKey layerId;
-    cocos2d::CCTexture2D* spriteSheetTexture;
 };

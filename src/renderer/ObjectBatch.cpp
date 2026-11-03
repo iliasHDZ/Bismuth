@@ -219,8 +219,6 @@ void ObjectBatch::writeGameObject(GameObject* object) {
 void ObjectBatch::finishWriting() {
     assert(vertexBuffer == nullptr);
 
-    storeGLStates();
-
     vertexCount = verticies.size();
     indexCount  = indicies.size();
 
@@ -238,25 +236,39 @@ void ObjectBatch::finishWriting() {
     // preCulledSprites.clear();
 
     prepareVAO();
-    restoreGLStates();
 }
 
 void ObjectBatch::draw(const LayerKey& layer) {
     PROFILER_PUSH("ObjectBatch::draw");
 
-    if (!sortedBatch->workGroupRangePerLayerKey.contains(layer)) {
+    if (!shouldDraw(layer)) {
         PROFILER_POP();
         return;
     }
+
+    auto spriteSheet = renderer.getSpriteSheetTexture(layer.spriteSheet);
+    if (!spriteSheet) {
+        PROFILER_POP();
+        return;
+    }
+
     const auto& range = sortedBatch->workGroupRangePerLayerKey[layer];
 
-    sortedBatch->bindBuffers();
-    prepareCullingComputeShader();
-    renderer.bindCullingComputeShaderBuffers();
-    sortedBatch->drawCommandBuffer->bindAs(GL_DRAW_INDIRECT_BUFFER);
-    // glBindVertexArray(vao);
-    vertexBuffer->bindAsStorageBuffer(VERTEX_BUFFER_BINDING);
-    culledIndexBuffer->bindAsStorageBuffer(CULLED_TRI_INDEX_BUFFER);
+    auto shader = renderer.getDrawingShader();
+    if (!shader->isInUse()) {
+        shader->use();
+        rawSpriteBuffer->bind();
+        sortedBatch->drawCommandBuffer->bindAs(GL_DRAW_INDIRECT_BUFFER);
+        vertexBuffer->bindAsStorageBuffer(VERTEX_BUFFER_BINDING);
+        culledIndexBuffer->bindAsStorageBuffer(CULLED_TRI_INDEX_BUFFER);
+    }
+
+    ccGLBindTexture2D(spriteSheet->getName());
+
+    if (layer.blending || layer.spriteSheet == SpriteSheet::GLOW)
+        ccGLBlendFunc(GL_SRC_ALPHA, GL_ONE);
+    else
+        ccGLBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
     glMultiDrawArraysIndirect(
         GL_TRIANGLES,
@@ -300,13 +312,8 @@ void ObjectBatch::predraw() {
 }
 
 void ObjectBatch::prepareCullingComputeShader() {
-    // log::info("{} {} {} {} {}", (void*)indexBuffer.get(), (void*)inputSpriteBuffer.get(), (void*)rawSpriteBuffer.get(), (void*)culledIndexBuffer.get(), (void*)shader);
-    // indexBuffer->bindAsStorageBuffer(shader);
     inputSpriteBuffer->bindAsStorageBuffer(INPUT_SPRITE_BUFFER_BINDING);
     rawSpriteBuffer->bind();
-    // culledIndexBuffer->bindAsStorageBuffer(CULLED_INDEX_BUFFER_BINDING);
-    culledIndexBuffer->bindAsStorageBuffer(CULLED_INDEX_BUFFER_BINDING);
-    // preCulledSpritesBuffer->bindAsStorageBuffer(PRE_CULLED_SPRITE_BUFFER_BINDING);
 }
 
 struct AttribTypeInfo {

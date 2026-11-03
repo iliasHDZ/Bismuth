@@ -222,7 +222,8 @@ bool Renderer::init(PlayLayer* layer, CCArray* levelObjects) {
         for (auto node : CCArrayExt<CCSpriteBatchNode*, false>(layer->m_batchNodes))
             node->removeAllChildren();
 
-        layer->m_gameBlendingLayerT1->addChild(layer->m_endPortal->m_gradientBar);
+        if (layer->m_endPortal)
+            layer->m_gameBlendingLayerT1->addChild(layer->m_endPortal->m_gradientBar);
     }
 
     setZOrder(-99999);
@@ -576,18 +577,6 @@ void Renderer::fetchBlendingStates() {
     colorChannelsIsBlending[COLOR_CHANNEL_P1]  = true;
     colorChannelsIsBlending[COLOR_CHANNEL_P2]  = true;
     colorChannelsIsBlending[COLOR_CHANNEL_LBG] = true;
-}
-
-Shader* Renderer::prepareDraw() {
-    PROFILER_PUSH("Renderer::prepareDraw");
-    // storeGLStates();
-    shader->use();
-    PROFILER_POP();
-    return shader.get();
-}
-
-void Renderer::finishDraw() {
-    // restoreGLStates();
 }
 
 void Renderer::update(float dt) {

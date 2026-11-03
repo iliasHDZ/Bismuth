@@ -4,11 +4,6 @@
 
 layout (local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 
-//// INDEX BUFFERS ////
-STORAGE_BUFFER(CULLED_INDEX_BUFFER_BINDING) CulledIndexBuffer {
-    uint u_culledIndicies[];
-};
-
 /*
     This buffer contains indicies into the input sprite buffer
     that are ordered by how they should be drawn on screen.
