@@ -20,7 +20,7 @@ struct ObjectInfo {
     float audioScaleMin;
     float audioScaleMax;
     float fadeMargin;
-    float opacity;
+    uint opacityValues;
     uint baseColorChannelId;
     HSV baseHSV;
     uint detailColorChannelId;

@@ -8,10 +8,11 @@
 #include "renderer/SAOBuffer.hpp"
 
 enum class SpriteType {
-    BASE   = 0,
-    DETAIL = 1,
-    BLACK  = 2,
-    GLOW   = 3
+    BASE        = 0,
+    DETAIL      = 1,
+    BLACK       = 2,
+    GLOW        = 3,
+    BLACK_CHILD = 4
 };
 
 enum class SpriteSheet {
@@ -123,9 +124,11 @@ public:
     static GEODE_INLINE u32 getSpriteColorChannel(SpriteType type, GameObject* object, cocos2d::CCSprite* sprite) {
         u32 colorChannel = type == SpriteType::DETAIL ? object->m_activeDetailColorID : object->m_activeMainColorID;
 
+        /*
         bool isSpriteBlack = (sprite == object) ? object->m_isObjectBlack : object->m_isColorSpriteBlack;
         if (isSpriteBlack)
             return COLOR_CHANNEL_BLACK;
+        */
         if (type == SpriteType::GLOW && object->m_glowColorIsLBG)
             return COLOR_CHANNEL_LBG;
         return colorChannel;

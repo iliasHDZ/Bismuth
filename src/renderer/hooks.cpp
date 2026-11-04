@@ -4,6 +4,7 @@
 #include <decomp/GJBaseGameLayer.hpp>
 #include <BProfiler.hpp>
 #include "../cl.hpp"
+#include "OverdrawView.hpp"
 
 using namespace geode::prelude;
 
@@ -19,11 +20,16 @@ class $modify(RendererPlayLayer, PlayLayer) {
     }
 
     bool init(GJGameLevel *level, bool useReplay, bool dontCreateObjects) {
-        // if (!allGameObjects) {
-        //     allGameObjects = CCArray::create();
-        //     allGameObjects->retain();
-        // }
-        return PlayLayer::init(level, useReplay, dontCreateObjects);
+        bool ret = PlayLayer::init(level, useReplay, dontCreateObjects);
+        if (ret) {
+            auto view = OverdrawView::create();
+            if (view) {
+                m_objectLayer->addChild(view->getPreDrawNode(), -10000);
+                m_objectLayer->addChild(view, 10000);
+                addChild(view->getText(), 10000);
+            }
+        }
+        return ret;
     }
 
     // This gets called from inside PlayLayer::setupHasCompleted()

@@ -74,9 +74,10 @@ void processSprite(uint preCulledSpriteIndex) {
 
     switch (spriteType) {
     case SPRITE_TYPE_GLOW:
+    case SPRITE_TYPE_BLACK:
+    case SPRITE_TYPE_BLACK_CHILD:
     case SPRITE_TYPE_BASE:   colorChannel = object.baseColorChannelId; break;
     case SPRITE_TYPE_DETAIL: colorChannel = object.detailColorChannelId; break;
-    case SPRITE_TYPE_BLACK:  colorChannel = COLOR_CHANNEL_BLACK; break;
     }
 
     vec4 color;
@@ -109,8 +110,19 @@ void processSprite(uint preCulledSpriteIndex) {
     if ((objectFlags & OBJECT_FLAG_IS_INVISIBLE_BLOCK) != 0)
         color = calculateInvisibleBlockColorAndOpacity(color);
 
-    color.a *= state.opacity * object.opacity;
+    if (spriteType == SPRITE_TYPE_BLACK || spriteType == SPRITE_TYPE_BLACK_CHILD)
+        color.rgb = vec3(0, 0, 0);
+
+    vec4 opacityValues = unpackUnorm4x8(object.opacityValues);
+
+    float opacity           = opacityValues.x;
+    float blackChildOpacity = opacityValues.y;
+
+    color.a *= state.opacity * opacity;
     color.rgb *= color.a;
+
+    if (spriteType == SPRITE_TYPE_BLACK_CHILD)
+        color.a *= blackChildOpacity;
 
     if (color.a <= 0.0)
         return;

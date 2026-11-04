@@ -15,5 +15,7 @@ vec3 getColorForValue(float v) {
 }
 
 void main() {
-    FragColor = vec4(getColorForValue(texture(u_texture, t_texCoord).r * 255.0), 0.5);
+    vec3 color = getColorForValue(texture(u_texture, t_texCoord).r * 255.0);
+
+    FragColor = vec4(color, 0.6);
 }

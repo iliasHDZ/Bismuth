@@ -5,9 +5,8 @@
 
 class Renderer;
 
-class OverdrawView {
+class OverdrawView : public cocos2d::CCNode {
 public:
-    OverdrawView(Renderer& renderer);
     ~OverdrawView();
 
     inline void setEnabled(bool enabled) {
@@ -20,24 +19,31 @@ public:
 
     inline bool isEnabled() { return enabled; }
 
-    void init();
+    inline cocos2d::CCNode* getPreDrawNode() const { return preDrawNode; }
 
-    void predraw();
+    inline cocos2d::CCLabelBMFont* getText() const { return label; }
 
-    void postdraw();
+    bool init() override;
 
-    void clear();
+public:
+    CREATE_FUNC(OverdrawView);
 
-    void finish();
-
-    std::string getDebugText();
+    static OverdrawView* get();
 
 private:
-    Renderer& renderer;
+    void predraw();
 
+    void draw() override;
+
+    friend class PreDrawNode;
+
+private:
     bool enabled = false;
     bool stencilEnabled = false;
     bool initialized = false;
+
+    cocos2d::CCNode* preDrawNode;
+    cocos2d::CCLabelBMFont* label;
 
     float overdrawRate = 0.0f;
 

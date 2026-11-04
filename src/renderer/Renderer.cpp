@@ -389,7 +389,13 @@ void Renderer::generateStaticRenderingBuffer(std::vector<GameObject*>& objects) 
             objectInfo->detailHSV = convertToShaderHSV(object->m_detailColor->m_hsv);
         }
 
-        objectInfo->opacity = (object->m_opacityMod2 > 0.0) ? object->m_opacityMod2 : 1.0;
+        float opacity = (object->m_opacityMod2 > 0.0) ? object->m_opacityMod2 : 1.0;
+        float blackChildOpacity = 1.0f;
+
+        if (object->m_hasCustomChild && !object->m_blackChildOpacityLocked)
+            blackChildOpacity = object->m_blackChildOpacity;
+
+        objectInfo->opacityValues = glm::packUnorm4x8({opacity, blackChildOpacity, 0, 0});
 
         if (object->m_isInvisibleBlock) objectInfo->flags |= OBJECT_FLAG_IS_INVISIBLE_BLOCK;
         if (object->m_customGlowColor)  objectInfo->flags |= OBJECT_FLAG_SPECIAL_GLOW_COLOR;
@@ -528,8 +534,6 @@ void Renderer::finish() {
 void Renderer::updateDebugText() {
     std::string text = "";
 
-    text += overdrawView.getDebugText();
-
     if (!enabled) {
         text += "Bismuth renderer is disabled\n";
         text += "Press F8 to enable\n";
@@ -625,13 +629,13 @@ Ref<Renderer> Renderer::get() {
 }
 
 bool Renderer::useOptimizations() {
-    if (canEnableDisableIngame())
-        return false;
-
-    return true;
+    return !canEnableDisableIngame();
 }
 
 void Renderer::setEnabled(bool enabled) {
+    if (useOptimizations() && !enabled)
+        return;
+
     this->enabled = enabled;
     this->setVisible(enabled);
     for (auto node : batchNodes)
@@ -699,52 +703,12 @@ DECLARE_HOTKEY(KEY_F6, {
     BProfiler::useAverages(!BProfiler::isUsingAverages()); 
 });
 
-static i32 storedVAO, storedVBO, storedIBO, storedProgram;
-static i32 storedBlendSrcAlpha, storedBlendSrcRGB;
-static i32 storedBlendDstAlpha, storedBlendDstRGB;
-
-static i32 storedTextures[9];
+static i32 storedVAO;
 
 void storeGLStates() {
     glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &storedVAO);
-    /*
-    PROFILER_PUSH("storeGLStates");
-    // glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &storedVBO);
-    // glGetIntegerv(GL_ELEMENT_ARRAY_BUFFER_BINDING, &storedIBO);
-    glGetIntegerv(GL_CURRENT_PROGRAM, &storedProgram);
-    
-    // glGetIntegerv(GL_BLEND_SRC_ALPHA, &storedBlendSrcAlpha);
-    // glGetIntegerv(GL_BLEND_SRC_RGB,   &storedBlendSrcRGB);
-    // glGetIntegerv(GL_BLEND_DST_ALPHA, &storedBlendDstAlpha);
-    // glGetIntegerv(GL_BLEND_DST_RGB,   &storedBlendDstRGB);
-
-    for (int i = 0; i < 9; i++) {
-    }
-    glActiveTexture(GL_TEXTURE0);
-    glGetIntegerv(GL_TEXTURE_BINDING_2D, storedTextures);
-    glActiveTexture(GL_TEXTURE0);
-    PROFILER_POP();
-    */
 }
 
 void restoreGLStates() {
     glBindVertexArray(storedVAO);
-    /*
-    PROFILER_PUSH("restoreGLStates");
-    // glBindBuffer(GL_ARRAY_BUFFER, storedVBO);
-    // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, storedIBO);
-    glUseProgram(storedProgram);
-
-    glBlendFuncSeparate(
-        storedBlendSrcRGB,
-        storedBlendDstRGB,
-        storedBlendSrcAlpha,
-        storedBlendDstAlpha
-    );
-    
-    glActiveTexture(GL_TEXTURE0);
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, *storedTextures);
-    PROFILER_POP();
-    */
 }

@@ -142,6 +142,7 @@ DECLARE_HOTKEY(enumKeyCodes::KEY_M, {
             case SpriteType::DETAIL: colorType = "detail"; break;
             case SpriteType::BLACK: colorType = "black"; break;
             case SpriteType::GLOW: colorType = "glow"; break;
+            case SpriteType::BLACK_CHILD: colorType = "blackChild"; break;
             }
 
             std::string frameName = "";

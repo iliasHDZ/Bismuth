@@ -36,10 +36,11 @@ const char* spriteSheetAsString(SpriteSheet spriteSheet) {
 
 const char* spriteTypeAsString(SpriteType type) {
     switch (type) {
-    case SpriteType::BASE:   return "BASE";
-    case SpriteType::DETAIL: return "DETAIL";
-    case SpriteType::BLACK:  return "BLACK";
-    case SpriteType::GLOW:   return "GLOW";
+    case SpriteType::BASE:        return "BASE";
+    case SpriteType::DETAIL:      return "DETAIL";
+    case SpriteType::BLACK:       return "BLACK";
+    case SpriteType::GLOW:        return "GLOW";
+    case SpriteType::BLACK_CHILD: return "BLACK_CHILD";
     default:
         return "<unknown>";
     }
@@ -148,10 +149,13 @@ void ObjectUtils::unpackSpriteRecursively(
     if (sprite == object->m_colorSprite) type = SpriteType::DETAIL;
     if (sprite == object->m_glowSprite)  type = SpriteType::GLOW;
 
-    if (sprite == object)
-        isSpriteBlack = object->m_isObjectBlack;
-    else if (type != SpriteType::GLOW)
-        isSpriteBlack = object->m_isColorSpriteBlack;
+    auto parentType = type;
+
+    if (sprite == object) {
+        if (object->m_isObjectBlack)
+            parentType = SpriteType::BLACK;
+    } else if (type == SpriteType::BASE && object->m_isColorSpriteBlack)
+        parentType = SpriteType::BLACK_CHILD;
 
     if (sprite->getTag() == 997)
         isSpriteBlack = false;
@@ -164,7 +168,7 @@ void ObjectUtils::unpackSpriteRecursively(
     }
     
     if (!sprite->getDontDraw())
-        func({sprite, object, isSpriteBlack ? SpriteType::BLACK : type, transform});
+        func({sprite, object, parentType, transform});
 
     for (auto child : spriteChildren) {
         if (child->getZOrder() >= 0)

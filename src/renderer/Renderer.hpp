@@ -22,8 +22,7 @@ u32 convertToShaderHSV(const cocos2d::ccHSVValue& hsv);
 class Renderer : public cocos2d::CCNode {
 private:
     inline Renderer()
-        : objectBatch(*this), groupManager(*this), differenceMode(*this),
-          overdrawView(*this) {}
+        : objectBatch(*this), groupManager(*this), differenceMode(*this) {}
     ~Renderer() override;
 
     bool init(PlayLayer* layer, cocos2d::CCArray* objects);
@@ -86,8 +85,9 @@ public:
     }
 
     inline bool isDifferenceModeEnabled() const { return differenceModeEnabled; }
-    inline void setDifferenceModeEnabled(bool enabled) {
-        differenceModeEnabled = enabled;
+    inline void setDifferenceModeEnabled(bool enabled) {    
+        if (!useOptimizations())
+            differenceModeEnabled = enabled;
     }
 
     inline bool canEnableDisableIngame() const { return ingameEnableDisable; }
@@ -169,7 +169,6 @@ private:
 
     bool differenceModeEnabled = false;
     DifferenceMode differenceMode;
-    OverdrawView overdrawView;
 
     float gameTimer = 0.0;
 

@@ -9,53 +9,55 @@
 
 using namespace geode::prelude;
 
-static OverdrawView* instance = nullptr;
-
 class PreDrawNode : public CCNode {
 public:
+    inline PreDrawNode(OverdrawView* view)
+        : view(view) {}
+
     void draw() override {
-        if (instance) instance->predraw();
+        if (view) view->predraw();
     }
+
+private:
+    OverdrawView* view;
 };
 
-class PostDrawNode : public CCNode {
-public:
-    void draw() override {
-        if (instance) {
-            instance->postdraw();
-            instance->finish();
-        }
-    }
-};
-
-OverdrawView::OverdrawView(Renderer& renderer)
-    : renderer(renderer)
-{
-    instance = this;
-}
+static OverdrawView* instance = nullptr;
 
 OverdrawView::~OverdrawView() {
+    preDrawNode->release();
+    label->retain();
     instance = nullptr;
-
-    if (stencilTexture != 0)
-        glDeleteTextures(1, &stencilTexture);
 }
 
-void OverdrawView::init() {
-    initialized = true;
+bool OverdrawView::init() {
+    if (instance)
+        return false;
     
-    Ref<PreDrawNode>  prenode  = new PreDrawNode();
-    Ref<PostDrawNode> postnode = new PostDrawNode();
-    
-    prenode->autorelease();
-    postnode->autorelease();
+    preDrawNode = new PreDrawNode(this);
+    preDrawNode->autorelease();
+    preDrawNode->retain();
 
-    renderer.getPlayLayer()->m_objectLayer->addChild(prenode, -10000);
-    renderer.getPlayLayer()->m_objectLayer->addChild(postnode, 10000);
+    label = CCLabelBMFont::create("", "chatFont.fnt");
+    label->retain();
+
+    // label->setAnchorPoint({0, 1});
+    // label->setPosition({5.0f, CCDirector::get()->getWinSize().height - 5.0f});
+
+    label->setAnchorPoint({0, 0});                                              
+    label->setPosition({5.0f, 5.0f});
+    label->setScale(0.7f);
+
+    instance = this;
+    return true;
 }
 
 void OverdrawView::predraw() {
     if (!enabled) return;
+    
+    glClearStencil(0);
+    glClear(GL_STENCIL_BUFFER_BIT);
+
     glEnable(GL_STENCIL_TEST);
     glStencilFunc(GL_ALWAYS, 0, 0);
     glStencilOp(GL_KEEP, GL_INCR, GL_INCR);
@@ -63,25 +65,14 @@ void OverdrawView::predraw() {
     stencilEnabled = true;
 }
 
-void OverdrawView::postdraw() {
+void OverdrawView::draw() {
+    label->setVisible(false);
     if (!enabled) return;
-
     glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
-    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-}
+    // glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
-void OverdrawView::clear() {
-    if (!enabled) return;
-    
-    glClearStencil(0);
-    glClear(GL_STENCIL_BUFFER_BIT);
-}
-
-void OverdrawView::finish() {
-    if (!enabled) return;
-    
     auto currentSize = CCDirector::get()->getOpenGLView()->getWindowedSize();
-    stencilBuffer.resize((u32)currentSize.width * (u32)currentSize.height);
+    stencilBuffer.resize((usize)currentSize.width * (usize)currentSize.height);
 
     storeGLStates();
 
@@ -94,11 +85,14 @@ void OverdrawView::finish() {
 
     overdrawRate = (double)totalPixelsDrawn / ((double)currentSize.width * (double)currentSize.height);
 
+    label->setString(fmt::format("Overdraw rate: {:.2f}%\n\nF4 to disable overdraw view", overdrawRate * 100.0f).c_str());
+    label->setVisible(true);
+
     if (stencilTexture != 0)
         glDeleteTextures(1, &stencilTexture);
 
     glGenTextures(1, &stencilTexture);
-    glBindTexture(GL_TEXTURE_2D, stencilTexture);
+    ccGLBindTexture2D(stencilTexture);
     glTexImage2D(
         GL_TEXTURE_2D,
         0,
@@ -124,41 +118,16 @@ void OverdrawView::finish() {
     shader->use();
     shader->setTexture(shader->location("u_texture"), 0, stencilTexture);
 
+    ccGLBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
     drawFullscreenQuad();
 
     restoreGLStates();
 }
 
-std::string OverdrawView::getDebugText() {
-    if (!enabled) return "";
-
-    std::string text = "Overdraw view is enabled, press F4 to hide this screen\n";
-    text += fmt::format("Overdraw rate: {:.2f}%\n\n", overdrawRate * 100.f);
-    return text;
+OverdrawView* OverdrawView::get() {
+    return instance;
 }
-
-#include <Geode/modify/CCDirector.hpp>
-class $modify(OverdrawViewCCDirector, CCDirector) {
-    void drawScene() {
-        if (instance)
-            instance->clear();
-
-        CCDirector::drawScene();
-    }
-};
-
-// #include <Geode/modify/CCKeyboardDispatcher.hpp>
-// class $modify(OverdrawViewCCKeyboardDispatcher, CCKeyboardDispatcher) {
-//     bool dispatchKeyboardMSG(enumKeyCodes key, bool keyDown, bool isKeyRepeat) {
-//         log::info("ofuck {} {} {}", (u32)key, keyDown, isKeyRepeat);
-//         if (instance) {
-//             if (keyDown && key == KEY_F4 && !isKeyRepeat)
-//                 instance->setEnabled(!instance->isEnabled());
-//         }
-// 
-//         return CCKeyboardDispatcher::dispatchKeyboardMSG(key, keyDown, isKeyRepeat);
-//     }
-// };
 
 DECLARE_HOTKEY(KEY_F4, {
     if (instance)

@@ -105,7 +105,7 @@ bool fetchGPUCoreCountRaw(cl_device_id deviceID) {
     }
 
     if (isIntelGPU())
-        gpuCoreCount *= 2; // TODO: Check if this is a stupid thing to do
+        coreCount *= 2; // TODO: Check if this is a stupid thing to do
 
     log::info("Detected core count: {}", coreCount);
 
