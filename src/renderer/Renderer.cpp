@@ -126,9 +126,11 @@ bool Renderer::init(PlayLayer* layer, CCArray* levelObjects) {
         DEBUG_LOG("  - isDecoration2: {}", object->m_isDecoration2);
         DEBUG_LOG("  - colorSprite: {}", object->m_colorSprite);
         DEBUG_LOG("  - glowSprite: {}", object->m_glowSprite);
-        DEBUG_LOG("  - isColorSpriteBlack: {}", object->m_isColorSpriteBlack);
         DEBUG_LOG("  - isObjectBlack: {}", object->m_isObjectBlack);
-        DEBUG_LOG("  - activeMainColorID: {}", object->m_activeMainColorID);
+        DEBUG_LOG("  - isObjectChildrenBlack: {}", object->m_isColorSpriteBlack);
+        DEBUG_LOG("  - isObjectChildrenBlack: {}", object->m_isColorSpriteBlack);
+        DEBUG_LOG("  - blackChildOpacity: {}", object->m_blackChildOpacity);
+        DEBUG_LOG("  - blackChildOpacityLocked: {}", object->m_blackChildOpacityLocked);
         DEBUG_LOG("  - activeDetailColorID: {}", object->m_activeDetailColorID);
         DEBUG_LOG("  - childCount: {}", object->getChildrenCount());
         if (object->m_baseColor && object->m_baseColor->m_usesHSV)
@@ -392,7 +394,7 @@ void Renderer::generateStaticRenderingBuffer(std::vector<GameObject*>& objects) 
         float opacity = (object->m_opacityMod2 > 0.0) ? object->m_opacityMod2 : 1.0;
         float blackChildOpacity = 1.0f;
 
-        if (object->m_hasCustomChild && !object->m_blackChildOpacityLocked)
+        if (object->m_hasCustomChild && !object->m_blackChildOpacityLocked && object->m_blackChildOpacity > 0.0f)
             blackChildOpacity = object->m_blackChildOpacity;
 
         objectInfo->opacityValues = glm::packUnorm4x8({opacity, blackChildOpacity, 0, 0});

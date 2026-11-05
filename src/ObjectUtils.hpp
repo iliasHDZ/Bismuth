@@ -35,6 +35,8 @@ const char* zLayerAsString(ZLayer zLayer);
 
 const char* spriteSheetAsString(SpriteSheet spriteSheet);
 
+const char* spriteTypeAsString(SpriteType type);
+
 template <>
 class fmt::formatter<ZLayer> {
 public:
@@ -52,6 +54,16 @@ public:
     template <typename Context>
     constexpr auto format (const SpriteSheet& value, Context& ctx) const {
         return format_to(ctx.out(), "{}", spriteSheetAsString(value));
+    }
+};
+
+template <>
+class fmt::formatter<SpriteType> {
+public:
+    constexpr auto parse (format_parse_context& ctx) { return ctx.begin(); }
+    template <typename Context>
+    constexpr auto format (const SpriteType& value, Context& ctx) const {
+        return format_to(ctx.out(), "{}", spriteTypeAsString(value));
     }
 };
 

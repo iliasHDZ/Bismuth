@@ -154,11 +154,8 @@ void ObjectUtils::unpackSpriteRecursively(
     if (sprite == object) {
         if (object->m_isObjectBlack)
             parentType = SpriteType::BLACK;
-    } else if (type == SpriteType::BASE && object->m_isColorSpriteBlack)
+    } else if (type == SpriteType::BASE && object->m_isColorSpriteBlack && sprite->getTag() != 997)
         parentType = SpriteType::BLACK_CHILD;
-
-    if (sprite->getTag() == 997)
-        isSpriteBlack = false;
 
     CCArrayExt<CCSprite*> spriteChildren = sprite->getChildren();
 
