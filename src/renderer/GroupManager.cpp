@@ -114,7 +114,7 @@ void GroupManager::initWithObjects(cocos2d::CCArray* objects) {
         }
         
         GroupCombination alphaComb = comb;
-        comb.removeGroupIdsNotInSet(alphaGroupIds);
+        alphaComb.removeGroupIdsNotInSet(alphaGroupIds);
 
         if (alphaIndicies.find(alphaComb) == alphaIndicies.end()) {
             alphaIndicies[alphaComb] = alphaCombIndex;
@@ -232,7 +232,10 @@ void GroupManager::removeCheckpoint(CheckpointObject* checkpoint) {
 }
 
 void GroupManager::moveGroup(GroupID groupId, float deltaX, float deltaY) {
-    auto combIndicies = groupCombinationIndiciesPerGroupId[groupId];
+    if (groupId > maxGroupId)
+        return;
+
+    const auto& combIndicies = groupCombinationIndiciesPerGroupId[groupId];
     for (auto combIndex : combIndicies)
         groupStates[combIndex].offset += glm::vec2(deltaX, deltaY);
 }
@@ -243,6 +246,9 @@ void GroupManager::rotateGroup(
     bool lockObjectRotation,
     std::optional<glm::vec2> centerPoint
 ) {
+    if (groupId > maxGroupId)
+        return;
+
     float cos = cosf(glm::radians(angle));
     float sin = sinf(glm::radians(angle));
     glm::mat2 matrix = {
@@ -250,23 +256,25 @@ void GroupManager::rotateGroup(
         { sin,  cos }
     };
 
-    auto combIndicies = groupCombinationIndiciesPerGroupId[groupId];
+    const auto& combIndicies = groupCombinationIndiciesPerGroupId[groupId];
     for (auto combIndex : combIndicies) {
         auto& groupState = groupStates[combIndex];
 
         if (!lockObjectRotation)
             groupState.localTransform *= matrix;
 
-        if (!centerPoint.has_value())
-            return;
+        if (centerPoint) {
+            auto center = centerPoint.value();
 
-        auto center = centerPoint.value();
-        groupState.positionalTransform *= matrix;
-        groupState.offset = matrix * (groupState.offset - center) + center;
+            groupState.positionalTransform *= matrix;
+            groupState.offset = matrix * (groupState.offset - center) + center;
+        }
     }
 }
 
 void GroupManager::toggleGroup(GroupID groupId, bool enabled) {
+    if (groupId > maxGroupId)
+        return;
     isGroupToggledOn[groupId] = enabled;
 }
 

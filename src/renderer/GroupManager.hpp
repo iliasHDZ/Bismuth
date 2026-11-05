@@ -8,7 +8,7 @@
 /*
     Objects can have up to 10 group ids. Alpha, move, rotate
     and scale triggers can then change opacity or transformation
-    depending on which group id they have.
+    depending on which group id they target.
     
     In GD, this is done by keeping track of the opacity and
     transformation of every object. And when a trigger gets
