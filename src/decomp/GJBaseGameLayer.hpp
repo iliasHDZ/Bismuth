@@ -11,5 +11,9 @@ public:
 
     void optimized_processRotationActions();
 
+    void processFollowActions();
+
+    void optimized_processFollowActions();
+
     void processMoveActionsStep(float dt, bool visibleFrame);
 };

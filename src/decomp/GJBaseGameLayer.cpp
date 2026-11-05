@@ -346,6 +346,142 @@ void decomp_GJBaseGameLayer::optimized_processRotationActions() {
     PROFILER_POP();
 }
 
+void decomp_GJBaseGameLayer::processFollowActions() {
+    for (auto node : m_effectManager->m_unkVector6d8) {
+        auto targetObjects = getGroup(node->getTag());
+        auto followObject = tryGetMainObject(node->m_unk074);
+
+        if (!followObject)
+            continue;
+
+        float lastPosX = followObject->m_lastPosition.x;
+        float lastPosY = followObject->m_lastPosition.y;
+
+        if (followObject->m_unk4C4 != m_gameState.m_commandIndex) {
+            lastPosX = followObject->m_positionX;
+            lastPosY = followObject->m_positionY;
+            followObject->m_unk4C4 = m_gameState.m_commandIndex;
+            followObject->dirtifyObjectRect();
+        }
+
+        node->m_unk038 = (followObject->m_positionX - lastPosX) * node->m_unk080;
+        node->m_unk040 = (followObject->m_positionY - lastPosY) * node->m_unk088;
+
+        bool isMoveX = node->m_unk038 != 0.0f;
+        bool isMoveY = node->m_unk040 != 0.0f;
+
+        if (
+            isMoveX ||
+            isMoveY ||
+            node->m_unk078 ||
+            followObject->m_unk4fb &&
+            m_effectManager->wasFollowing(node->getTag(), node->m_unk074)
+        ) {
+            GroupCommandObject2* gco = node->m_groupObject;
+            if (gco) {
+                gco->m_currentXOffset += node->m_unk038;
+                gco->m_currentYOffset += node->m_unk040;
+            }
+
+            m_effectManager->setFollowing(node->getTag(), node->m_unk074, isMoveX || isMoveY);
+
+            m_followedCount += targetObjects->count();
+
+            for (auto object : CCArrayExt<GameObject*, false>(targetObjects)) {
+                if (!object) break;
+
+                if (!object->m_isDecoration2 && object->m_unk4C4 != m_gameState.m_commandIndex) {
+                    object->m_lastPosition.x = object->m_positionX;
+                    object->m_lastPosition.y = object->m_positionY;
+                    object->m_unk4C4 = m_gameState.m_commandIndex;
+                    object->dirtifyObjectRect();
+                }
+
+                if (isMoveY)
+                    object->m_positionY += node->m_unk040;
+                object->dirtifyObjectPos();
+                if (isMoveX)
+                    object->m_positionX += node->m_unk038;
+
+                updateObjectSection(object);
+            }
+
+            updateDisabledObjectsLastPos(targetObjects);
+        }
+    }
+}
+
+void decomp_GJBaseGameLayer::optimized_processFollowActions() {
+    for (auto node : m_effectManager->m_unkVector6d8) {
+        auto targetObjects = getGroup(node->getTag());
+        auto followObject = tryGetMainObject(node->m_unk074);
+
+        if (!followObject)
+            continue;
+
+        float lastPosX = followObject->m_lastPosition.x;
+        float lastPosY = followObject->m_lastPosition.y;
+
+        if (followObject->m_unk4C4 != m_gameState.m_commandIndex) {
+            lastPosX = followObject->m_positionX;
+            lastPosY = followObject->m_positionY;
+            followObject->m_unk4C4 = m_gameState.m_commandIndex;
+            followObject->dirtifyObjectRect();
+        }
+
+        node->m_unk038 = (followObject->m_positionX - lastPosX) * node->m_unk080;
+        node->m_unk040 = (followObject->m_positionY - lastPosY) * node->m_unk088;
+
+        bool isMoveX = node->m_unk038 != 0.0f;
+        bool isMoveY = node->m_unk040 != 0.0f;
+
+        if (
+            isMoveX ||
+            isMoveY ||
+            node->m_unk078 ||
+            followObject->m_unk4fb &&
+            m_effectManager->wasFollowing(node->getTag(), node->m_unk074)
+        ) {
+            GroupCommandObject2* gco = node->m_groupObject;
+            if (gco) {
+                gco->m_currentXOffset += node->m_unk038;
+                gco->m_currentYOffset += node->m_unk040;
+            }
+
+            m_effectManager->setFollowing(node->getTag(), node->m_unk074, isMoveX || isMoveY);
+
+            m_followedCount += targetObjects->count();
+
+            auto renderer = Renderer::get();
+
+            renderer->getGroupManager().moveGroup(node->getTag(), node->m_unk038, node->m_unk040);
+
+            auto reducedTargetObjects = renderer->getGroupManager().getVanillaRotateGroup(node->getTag());
+
+            for (auto object : reducedTargetObjects) {
+                if (!object) break;
+
+                if (!object->m_isDecoration2 && object->m_unk4C4 != m_gameState.m_commandIndex) {
+                    object->m_lastPosition.x = object->m_positionX;
+                    object->m_lastPosition.y = object->m_positionY;
+                    object->m_unk4C4 = m_gameState.m_commandIndex;
+                    object->dirtifyObjectRect();
+                }
+
+                if (isMoveY)
+                    object->m_positionY += node->m_unk040;
+                object->dirtifyObjectPos();
+                if (isMoveX)
+                    object->m_positionX += node->m_unk038;
+
+                updateObjectSection(object);
+            }
+
+            updateDisabledObjectsLastPos(targetObjects);
+        }
+    }
+}
+
 // UNTESTED
 void decomp_GJBaseGameLayer::processMoveActionsStep(float dt, bool visibleFrame) {
     m_unked0 = 0;

@@ -242,15 +242,10 @@ class $modify(RendererGJBaseGameLayer, GJBaseGameLayer) {
             siphon_processRotationActions();
     }
 
-    void processFollowActions() {
+    void siphon_processFollowActions() {
         auto renderer = Renderer::get();
-        if (renderer == nullptr) {
-            GJBaseGameLayer::processFollowActions();
-            return;
-        }
 
-        auto eman = m_effectManager;
-        for (auto node : eman->m_unkVector6d8) {
+        for (auto node : m_effectManager->m_unkVector6d8) {
             i32 targetGroupId = node->getTag();
             i32 followGroupId = node->m_unk074;
 
@@ -268,6 +263,19 @@ class $modify(RendererGJBaseGameLayer, GJBaseGameLayer) {
         }
 
         GJBaseGameLayer::processFollowActions();
+    }
+
+    void processFollowActions() {
+        auto renderer = Renderer::get();
+        if (!renderer) {
+            GJBaseGameLayer::processFollowActions();
+            return;
+        }
+
+        if (renderer->useOptimizations())
+            ((decomp_GJBaseGameLayer*)this)->optimized_processFollowActions();
+        else
+            siphon_processFollowActions();
     }
 
     void toggleGroup(int id, bool activate) {
