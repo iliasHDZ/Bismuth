@@ -89,8 +89,8 @@ making it use simple rotation math instead would already make it run like
 
 When starting a level, Bismuth gathers all info about objects and its
 sprites that are required in the rendering. It also gathers other info
-for rendering. Puts sends it all to the GPU and loads it into designated
-buffers (chunks of memory).
+for rendering. And then sends it all to the GPU and loads it into
+designated buffers (chunks of memory).
 
 And every frame, Bismuth gathers all the color channel colors and send it
 to the GPU. It also gathers info about movement triggers and sends
