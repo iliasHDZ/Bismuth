@@ -145,22 +145,21 @@ performance, the amount of work groups should equal 2.5x the amount
 of GPU cores.
 
 So, we figure out the number of work groups to use and we assign a number
-of sprites to a work groups.
-
-Each work group then processes the sprites assigned to it in the GPU.
+of sprites to a work groups. Each work group then processes the sprites
+assigned to it in the GPU.
 
 It first finds the current position of the sprite by applying the group
-movements (explained later). It checks if the position is on screen.
+movements (explained later). It checks if the position is on screen. If it
+isn't on screen, it just skips that sprite and goes to the next one. If it
+is, it then continues processing the object. Finding out its color, 
+transformation and other info for render.
 
-If it isn't, it just skips that sprite and goes to the next one.
-
-If it is, it figures out which color that sprite has. We know the
-sprite type (base, detail, black, glow). We also know the base and detail
-color channel ids of its parent object.
-
-We figure out the correct color channel and then take appropriate color
-from the **color channel buffer**. This buffer is sent every frame to
-the GPU and it contains a list of all the 1101 color channel colors.
+To find the color of the sprite. We know the sprite type (base, detail,
+black, glow). We also know the base and detail color channel ids of
+its parent object. We figure out the correct color channel and then
+take appropriate color from the **color channel buffer**. This buffer
+is sent every frame to the GPU and it contains a list of all the 1101
+color channel colors.
 
 Pulse group triggers are also applied here. They have to be applied for
 every object which is why they can also be slow sometimes.
@@ -171,16 +170,13 @@ We finally store its color, transformation and opacity into the
 to draw the sprites on screen.
 
 Because of the fact that there may be a varying number of sprites to
-be drawn. We also need to tell the GPU how many to draw.
+be drawn. We also need to tell the GPU how many to draw. Bismuth allocates
+one draw command for each work group. A draw command tells the rendering
+stage how many sprites to render.
 
-Bismuth allocates one draw command for each work group. A draw command
-tells the rendering stage how many sprites to render.
-
-Each work figures out how many of its sprites are on screen and writes
-to its draw command how many sprites to draw.
-
-The rendering stage then goes through each of the draw commands and
-draws its sprites.
+Each work group figures out how many of its sprites are on screen and writes
+to its draw command how many sprites to draw. The rendering stage then goes
+through each of the draw commands and draws its sprites.
 
 Here is a more technical diagram I made a while ago which explains how
 it does that:
