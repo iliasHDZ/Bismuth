@@ -26,7 +26,7 @@ Each sprite can be from one of the following spritesheets:
 - `GJ_GameSheetGlow` (all glow sprites)
 - `FireSheet` (many animated objects)
 - `ParticleSheet` (particle sprites)
-- `PixelSheet` (pixel object)
+- `PixelSheet` (pixel objects)
 
 ### 1.1 Sprite batches
 

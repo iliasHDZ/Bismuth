@@ -372,7 +372,9 @@ class $modify(MyLevelEditorLayer, LevelEditorLayer) {
             if (view) {
                 m_objectLayer->addChild(view->getPreDrawNode(), -10000);
                 m_objectLayer->addChild(view, 10000);
-                addChild(view->getText(), 10000);
+
+                m_editorUI->addChild(view->getText(), 10000);
+                view->getText()->setPosition({44, 116});
             }
         }
         return ret;
