@@ -41,3 +41,6 @@ GLAD_API_CALL PFNGLSHADERSTORAGEBLOCKBINDINGPROC glad_glShaderStorageBlockBindin
 
 bool hasLoadedNewerOpenGLFunctions();
 void loadNewerOpenGLFunctions();
+
+void storeVAO();
+void restoreVAO();

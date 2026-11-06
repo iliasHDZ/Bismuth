@@ -2,17 +2,15 @@
 #include "Renderer.hpp"
 #include <decomp/PlayLayer.hpp>
 #include <decomp/GJBaseGameLayer.hpp>
-#include <BProfiler.hpp>
 #include "../cl.hpp"
 #include "OverdrawView.hpp"
 
 using namespace geode::prelude;
 
 static bool newPlayLayer = false;
-// static CCArray* allGameObjects = nullptr;
 
 #include <Geode/modify/PlayLayer.hpp>
-class $modify(RendererPlayLayer, PlayLayer) {
+class $modify(MyPlayLayer, PlayLayer) {
     void setupHasCompleted() {
         newPlayLayer = true;
         PlayLayer::setupHasCompleted();
@@ -54,17 +52,13 @@ class $modify(RendererPlayLayer, PlayLayer) {
     }
 
     void updateVisibility(float dt) {
-        auto timer = BProfiler::start("PlayLayer::updateVisibility");
         auto renderer = Renderer::get();
         if (renderer && renderer->useOptimizations()) {
             ((decomp_PlayLayer*)this)->optimized_updateVisibility(dt);
-            timer.end();
             return;
         }
 
         PlayLayer::updateVisibility(dt);
-        // ((decomp_PlayLayer*)this)->virtual_updateVisibility(dt);
-        timer.end();
     }
 
     CheckpointObject* createCheckpoint() {
@@ -83,6 +77,14 @@ class $modify(RendererPlayLayer, PlayLayer) {
         auto renderer = Renderer::get();
         if (renderer)
             renderer->getGroupManager().restoreCheckpoint(object);
+    }
+
+    void checkForEnd() {
+        auto renderer = Renderer::get();
+        if (renderer && renderer->useOptimizations() && m_endPortal)
+            m_endPortal->updateEndPos(false);
+
+        PlayLayer::checkForEnd();
     }
 };
 
@@ -104,30 +106,6 @@ class $modify(MyCheckpointObject, CheckpointObject) {
     }
 };
 
-#include <Geode/modify/GameObject.hpp>
-class $modify(MyGameObject, GameObject) {
-    /*
-    static GameObject* objectFromVector(
-        gd::vector<gd::string>& propValues,
-        gd::vector<void*>& propIsPresent,
-        GJBaseGameLayer* gameLayer,
-        bool lowDetail
-    ) {
-        GameObject* ret = GameObject::objectFromVector(propValues, propIsPresent, gameLayer, lowDetail);
-        if (!GameManager::get()->m_playLayer)
-            return ret;
-
-        allGameObjects->addObject(ret);
-        ret->retain();
-
-        if (ret->m_objectType == GameObjectType::Decoration)
-            return ret;
-        
-        return ret;
-    }
-    */
-};
-
 static void removeDecoObjects(CCArray* array) {
     for (u32 i = 0; i < array->count();) {
         auto object = (GameObject*)array->objectAtIndex(i);
@@ -141,9 +119,7 @@ static void removeDecoObjects(CCArray* array) {
 #include <Geode/modify/GJBaseGameLayer.hpp>
 class $modify(RendererGJBaseGameLayer, GJBaseGameLayer) {
     void update(float dt) {
-        auto timer = BProfiler::start("GJBaseGameLayer::update");
         GJBaseGameLayer::update(dt);
-        timer.end();
 
         auto renderer = Renderer::get();
         if (renderer)
@@ -312,11 +288,7 @@ class $modify(RendererCCDisplayLinkDirector, CCDisplayLinkDirector) {
             return;
         }
 
-        auto timer = BProfiler::start("Frame time");
         CCDisplayLinkDirector::mainLoop();
-        timer.end();
-
-        BProfiler::frameEnd();
     }
 };
 
@@ -388,5 +360,21 @@ class $modify(MyLoadingLayer, LoadingLayer) {
                 false
             );
         }
+    }
+};
+
+#include <Geode/modify/LevelEditorLayer.hpp>
+class $modify(MyLevelEditorLayer, LevelEditorLayer) {
+    bool init(GJGameLevel* level, bool noUI) {
+        bool ret = LevelEditorLayer::init(level, noUI);
+        if (ret) {
+            auto view = OverdrawView::create();
+            if (view) {
+                m_objectLayer->addChild(view->getPreDrawNode(), -10000);
+                m_objectLayer->addChild(view, 10000);
+                addChild(view->getText(), 10000);
+            }
+        }
+        return ret;
     }
 };

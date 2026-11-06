@@ -34,3 +34,13 @@ void loadNewerOpenGLFunctions() {
 
     loaded = true;
 }
+
+static int storedVAO;
+
+void storeVAO() {
+    glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &storedVAO);
+}
+
+void restoreVAO() {
+    glBindVertexArray(storedVAO);
+}

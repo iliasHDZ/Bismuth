@@ -1,3 +1,5 @@
+#pragma once
+
 #include <Geode/Geode.hpp>
 #include <Geode/modify/CCTextureAtlas.hpp>
 
@@ -6,9 +8,11 @@
 #ifdef PROFILER_ENABLED
 #define PROFILER_PUSH(S) profiler::functionPush(S)
 #define PROFILER_POP() profiler::functionPop()
+#define PROFILER_SCOPE(S) ScopedProfiler __profiler(S)
 #else
 #define PROFILER_PUSH(S)
 #define PROFILER_POP()
+#define PROFILER_SCOPE(S)
 #endif
 
 class GPUTimer;
@@ -25,6 +29,17 @@ void addTimer(GPUTimer* timer);
 
 void removeTimer(GPUTimer* timer);
 
+};
+
+class ScopedProfiler {
+public:
+    inline ScopedProfiler(const char* name) {
+        profiler::functionPush(name);
+    }
+
+    inline ~ScopedProfiler() {
+        profiler::functionPop();
+    }
 };
 
 #define CM ,

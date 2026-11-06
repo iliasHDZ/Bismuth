@@ -11,13 +11,10 @@
 #include "ccTypes.h"
 #include "common.hpp"
 #include "glm/fwd.hpp"
-#include "math/ConvexPolygon.hpp"
-#include "math/Line.hpp"
 #include <Geode/Enums.hpp>
 #include <Geode/binding/GJBaseGameLayer.hpp>
 #include <Geode/binding/GameObject.hpp>
 #include <Geode/binding/RingObject.hpp>
-#include <BProfiler.hpp>
 #include "profiler.hpp"
 #include "ObjectSorter.hpp"
 
@@ -67,8 +64,6 @@ bool Renderer::init(PlayLayer* layer, CCArray* levelObjects) {
     if (!hasLoadedNewerOpenGLFunctions())
         loadNewerOpenGLFunctions();
 
-    glGenQueries(1, &timeElapsedQuery);
-
     this->layer = layer;
     
     auto size = CCDirector::get()->getWinSize();
@@ -76,7 +71,7 @@ bool Renderer::init(PlayLayer* layer, CCArray* levelObjects) {
     if (!Mod::get()->getSettingValue<bool>("enabled"))
         return false;
 
-    ingameEnableDisable = Mod::get()->getSettingValue<bool>("ingame_enable");
+    debugToolsEnabled = Mod::get()->getSettingValue<bool>("debug_tools");
 
     log::info("OpenGL Version: {}", (const char*)glGetString(GL_VERSION));
 
@@ -110,6 +105,9 @@ bool Renderer::init(PlayLayer* layer, CCArray* levelObjects) {
         }
 
         if (object->isTrigger() || object->m_isHide || object->m_objectID == GUIDE_OBJECT_ID)
+            continue;
+
+        if (object == layer->m_endPortal)
             continue;
 
         DEBUG_LOG("- {}, id: {}", (void*)object, object->m_objectID);
@@ -170,9 +168,6 @@ bool Renderer::init(PlayLayer* layer, CCArray* levelObjects) {
     log::info("Sprite count: {}", objectBatch.getSpriteCount());
 
     std::map<std::string, std::string> shaderMacroVariables;
-    // shaderMacroVariables["TOTAL_OBJECT_COUNT"] = std::to_string(renderedGameObjectCount == 0 ? 1 : renderedGameObjectCount);
-    // shaderMacroVariables["GROUP_ID_LIMIT"]     = std::to_string(groupCombCount);
-    // shaderMacroVariables["TOTAL_SPRITE_COUNT"] = std::to_string(objectBatch.getSpriteCount());
 
     log::info("Compiling shaders...");
     shader = Shader::create("objectDrawing.vert", "objectDrawing.frag", shaderMacroVariables);
@@ -196,36 +191,14 @@ bool Renderer::init(PlayLayer* layer, CCArray* levelObjects) {
     if (!gameStateBuffer)
         return false;
 
-    debugText = CCLabelBMFont::create("", "chatFont.fnt");
-    debugTextOutline1 = CCLabelBMFont::create("", "chatFont.fnt");
-    debugTextOutline2 = CCLabelBMFont::create("", "chatFont.fnt");
-
-    debugTextOutline1->setColor({0, 0, 0});
-    debugTextOutline1->setOpacity(200);
-    debugTextOutline2->setColor({0, 0, 0});
-    debugTextOutline2->setOpacity(200);
-
-    debugText->setAnchorPoint(CCPoint(0, 1));
-    debugText->setPosition(1, CCDirector::get()->getWinSize().height - 8);
-    debugText->setScale(0.5);
+    debugText = DebugText::create();
     layer->addChild(debugText, 1000);
 
-    debugTextOutline1->setAnchorPoint(CCPoint(0, 1));
-    debugTextOutline1->setPosition(1 - 0.5, CCDirector::get()->getWinSize().height - 8 - 0.5);
-    debugTextOutline1->setScale(0.5);
-    layer->addChild(debugTextOutline1, 999);
-
-    debugTextOutline2->setAnchorPoint(CCPoint(0, 1));
-    debugTextOutline2->setPosition(1 + 0.5, CCDirector::get()->getWinSize().height - 8 + 0.5);
-    debugTextOutline2->setScale(0.5);
-    layer->addChild(debugTextOutline2, 999);
-
     if (useOptimizations()) {
-        for (auto node : CCArrayExt<CCSpriteBatchNode*, false>(layer->m_batchNodes))
-            node->removeAllChildren();
-
-        if (layer->m_endPortal)
-            layer->m_gameBlendingLayerT1->addChild(layer->m_endPortal->m_gradientBar);
+        for (auto object : CCArrayExt<GameObject*, false>(layer->m_objects)) {
+            if (object != layer->m_endPortal)
+                object->deactivateObject(true);
+        }
     }
 
     setZOrder(-99999);
@@ -237,7 +210,7 @@ bool Renderer::init(PlayLayer* layer, CCArray* levelObjects) {
 
     reset();
 
-    if (ingameEnableDisable) {
+    if (debugToolsEnabled) {
         Notification::create(
             "Debug tools removes ALL optimizations!\nDisable it for better performance.",
             NotificationIcon::Warning,
@@ -267,7 +240,6 @@ void Renderer::generateBatchNodes() {
 }
 
 void Renderer::terminate() {
-    glDeleteQueries(1, &timeElapsedQuery);
     currentRenderer = nullptr;
     log::info("Renderer terminated");
 }
@@ -281,8 +253,6 @@ void Renderer::prepareShaderUniforms() {
 	kmGLGetMatrix(KM_GL_MODELVIEW, &matrixMV);
 	
 	kmMat4Multiply(&matrixMVP, &matrixP, &matrixMV);
-
-    // shader->setTextureArray("u_spriteSheets", (i32)SpriteSheet::COUNT, spriteSheets);
 
     (kmMat4&)gameState.u_mvp = matrixMVP;
     gameState.u_timer = gameTimer;
@@ -326,7 +296,7 @@ void Renderer::prepareShaderUniforms() {
 }
 
 void Renderer::prepareColorChannelBuffer() {
-    PROFILER_PUSH("Renderer::prepareColorChannelBuffer");
+    PROFILER_SCOPE("Renderer::prepareColorChannelBuffer");
 
     auto effectManager = layer->m_effectManager;
 
@@ -346,8 +316,6 @@ void Renderer::prepareColorChannelBuffer() {
 
     colorChannelBuffer->u_channelColors[COLOR_CHANNEL_BLACK] = { 0, 0, 0, 255 };
     colorChannelBufferObject->flush(0, colorChannelBufferObject->getSize());
-    
-    PROFILER_POP();
 }
 
 void Renderer::generateStaticRenderingBuffer(std::vector<GameObject*>& objects) {
@@ -405,129 +373,31 @@ void Renderer::generateStaticRenderingBuffer(std::vector<GameObject*>& objects) 
             objectInfo->flags |= OBJECT_FLAG_IS_STATIC_OBJECT;
         objectInfo->fadeMargin = object->m_fadeMargin;
 
-        objectSRBIndicies[object] = index;
+        objectIndicies[object] = index;
         index++;
     }
 
-    srbBuffer = Buffer::createStaticDraw("ObjectInfoBuffer", objectInfos.data(), objectInfos.size() * sizeof(ObjectInfo));
+    objectInfoBuffer = Buffer::createStaticDraw("ObjectInfoBuffer", objectInfos.data(), objectInfos.size() * sizeof(ObjectInfo));
 };
 
-static glm::vec2 linePoint = { 100, 200 };
-static float     lineAngle = 0;
-
-static ConvexPolygon polygon;
-
-static isize triangleIndex = 0;
-
-static void drawLine(Renderer* ren, const Line& line, const glm::vec4& color) {
-    glm::vec2 npp = { line.normal.y, -line.normal.x };
-
-    glm::vec2 p1 = line.firstPoint() + npp *  10000.f;
-    glm::vec2 p2 = line.firstPoint() + npp * -10000.f;
-
-    ren->drawLine(p1, p2, color);
-}
-
-static void drawCross(Renderer* ren, const glm::vec2& point, const glm::vec4& color) {
-    ren->drawLine(point + glm::vec2(-5, -5), point + glm::vec2( 5,  5), color);
-    ren->drawLine(point + glm::vec2(-5,  5), point + glm::vec2( 5, -5), color);
-}
-
-float CAMERA_CULL_RECT_SCALE = 1.3;
-
 void Renderer::draw() {
-    PROFILER_PUSH("Renderer::draw");
-    
-    if (debugTextEnabled) {
-        glBeginQuery(GL_TIME_ELAPSED, timeElapsedQuery);
-    }
-
-    /*
-    log::info("TEST");
-    for (auto& [k, v] : layer->m_effectManager->m_pulseEffectMap) {
-        log::info("  - {}", k);
-    }
-    */
-
+    PROFILER_SCOPE("Renderer::draw");
     fetchBlendingStates();
 
     u64 prevTime = getTime();
-    // storeGLStates();
     prepareShaderUniforms();
     if (!isPaused()) {
         prepareColorChannelBuffer();
-    
-        // auto timer = BProfiler::start("Generate group state buffer");
         groupManager.updateGroupStateBuffer();
-        // timer.end();
-
-        // glm::vec2 bl = view.bottomLeft;
-        // glm::vec2 br = view.bottomLeft + view.rightVector;
-        // glm::vec2 tl = view.bottomLeft + view.upVector;
-        // glm::vec2 tr = view.bottomLeft + view.rightVector + view.upVector;
-
-        // drawLine(bl, br, glm::vec4(1, 1, 0, 1));
-        // drawLine(br, tr, glm::vec4(1, 1, 0, 1));
-        // drawLine(tr, tl, glm::vec4(1, 1, 0, 1));
-        // drawLine(tl, bl, glm::vec4(1, 1, 0, 1));
 
         objectBatch.predraw();
     }
 
     renderingTimer.start();
-
-    /*
-    glm::vec2 normal { glm::cos(glm::radians(lineAngle)), glm::sin(glm::radians(lineAngle)) };
-
-    drawLine(linePoint, linePoint + normal * 10.f, glm::vec4(0, 1, 0, 1));
-
-    Line line { linePoint, normal };
-
-    ::drawLine(this, line, glm::vec4(1, 0, 0, 1));
-
-    for (const auto& mline : polygon.getLines()) {
-        ::drawLine(this, mline, glm::vec4(0.5, 0.5, 0.5, 1));
-    
-        auto inter = line.intersectionWith(mline);
-        if (inter)
-            drawCross(this, inter.value(), glm::vec4(0, 0, 1, 1));
-    }
-
-    std::vector<glm::vec2> verticies;
-
-    polygon.triangulate([&](const auto& p1, const auto& p2, const auto& p3) {
-        verticies.push_back(p1);
-        verticies.push_back(p2);
-        verticies.push_back(p3);
-    });
-
-    if (triangleIndex >= (verticies.size() / 3))
-        triangleIndex = 0;
-
-    if (verticies.size() != 0) {
-        auto p1 = verticies[triangleIndex * 3 + 0];
-        auto p2 = verticies[triangleIndex * 3 + 1];
-        auto p3 = verticies[triangleIndex * 3 + 2];
-
-        drawLine(p1, p2, glm::vec4(0, 1, 0, 1));
-        drawLine(p2, p3, glm::vec4(0, 1, 0, 1));
-        drawLine(p3, p1, glm::vec4(0, 1, 0, 1));
-    }
-    */
-
-    // restoreGLStates();
-
-    PROFILER_POP();
 }
 
 void Renderer::finish() {
     renderingTimer.stop();
-
-    if (debugTextEnabled) {
-        renderTime = 0;
-        glEndQuery(GL_TIME_ELAPSED);
-        glGetQueryObjecti64v(timeElapsedQuery, GL_QUERY_RESULT, &renderTime);
-    }
 
     if (debugText->isVisible())
         updateDebugText();
@@ -537,8 +407,10 @@ void Renderer::updateDebugText() {
     std::string text = "";
 
     if (!enabled) {
-        text += "Bismuth renderer is disabled\n";
-        text += "Press F8 to enable\n";
+        if (differenceModeEnabled) {
+            text += "Difference mode is enabled (F9 to enable)\n";
+        } else
+            text += "Bismuth renderer is disabled (F8 to enable)\n";
     } else {
         if (debugTextEnabled) {
             auto screenSize = CCDirector::get()->getWinSizeInPixels();
@@ -546,29 +418,18 @@ void Renderer::updateDebugText() {
             text += fmt::format("Bismuth renderer {}\n", Mod::get()->getVersion().toVString());
             text += fmt::format("OpenGL {}\n", (const char*)glGetString(GL_VERSION));
             text += fmt::format("{}\n", (const char*)glGetString(GL_RENDERER));
-            text += fmt::format("Window: {}x{}\n", screenSize.width, screenSize.height);
-            text += fmt::format("GPU time: {}ms\n", (double)renderTime / 1000000.0);
-            text += fmt::format("Vertex buffer size: {}\n", byteSizeToString(objectBatch.getVertexBufferSize()));
-            text += fmt::format("Sprites on screen: {}\n", spritesOnScreen);
-            text += fmt::format("Static rendering buffer size: {}\n", byteSizeToString(srbBuffer->getSize()));
-            text += fmt::format("Group state buffer size: {}\n", byteSizeToString(groupManager.getGroupStateBufferSize()));
-            text += fmt::format("Color channel buffer size: {}\n", byteSizeToString(sizeof(ColorChannelBuffer)));
-            text += "\n";
-            text += BProfiler::toString();
             text += "\n";
             text += "Press F3 to hide this screen\n";
         } else if (differenceModeEnabled)
             text += "_\n";
     }
 
-    debugText->setString(text.c_str());
-    debugTextOutline1->setString(text.c_str());
-    debugTextOutline2->setString(text.c_str());
+    debugText->setText(text);
 }
 
 void Renderer::bindCullingComputeShaderBuffers() {
     gameStateBuffer->bindAsUniformBuffer(GAME_STATE_BUFFER_BINDING);
-    srbBuffer->bindAsStorageBuffer(OBJECT_INFO_BUFFER_BINDING);
+    objectInfoBuffer->bindAsStorageBuffer(OBJECT_INFO_BUFFER_BINDING);
     colorChannelBufferObject->bindAsStorageBuffer(COLOR_CHANNEL_BUFFER_BINDING);
     groupManager.bindGroupStateBuffers();
 }
@@ -631,7 +492,7 @@ Ref<Renderer> Renderer::get() {
 }
 
 bool Renderer::useOptimizations() {
-    return !canEnableDisableIngame();
+    return !isDebugToolsEnabled();
 }
 
 void Renderer::setEnabled(bool enabled) {
@@ -644,46 +505,18 @@ void Renderer::setEnabled(bool enabled) {
         node->setVisible(enabled);
     for (auto batch : vanillaBatchNodes)
         batch->setVisible(!enabled);
+
     // For checkpoints
     layer->m_game2LayerT1->setVisible(true);
+    // For end portal
+    layer->m_gameBlendingLayerT1->setVisible(true);
+    layer->m_gameLayerT1->setVisible(true);
+
     updateDebugText();
 }
 
 void Renderer::reset() {
     groupManager.resetGroupStates();
-}
-
-void Renderer::drawLine(const glm::vec2& p1, const glm::vec2& p2, const glm::vec4& color) {
-    if (!basicShader)
-        basicShader = Shader::create("basic.vert", "basic.frag");
-    if (!basicShader)
-        return;
-
-    glm::vec2 data[2] = { p1, p2 };
-    auto buffer = Buffer::createStaticDraw("Line buffer", &data, sizeof(data));
-    if (!buffer) return;
-    buffer->bindAs(GL_ARRAY_BUFFER);
-
-    u32 vao;
-    glGenVertexArrays(1, &vao);
-    glBindVertexArray(vao);
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), 0);
-    glEnableVertexAttribArray(0);
-
-    kmMat4 matrixP;
-	kmMat4 matrixMV;
-	kmMat4 matrixMVP;
-	kmGLGetMatrix(KM_GL_PROJECTION, &matrixP);
-	kmGLGetMatrix(KM_GL_MODELVIEW, &matrixMV);
-	kmMat4Multiply(&matrixMVP, &matrixP, &matrixMV);
-
-    basicShader->use();
-    basicShader->setMatrix4("u_mvp", matrixMVP.mat);
-    basicShader->setVec4("u_color", color);
-
-    glDrawArrays(GL_LINES, 0, 2);
-
-    glDeleteVertexArrays(1, &vao);
 }
 
 DECLARE_HOTKEY(KEY_F3, {
@@ -700,17 +533,3 @@ DECLARE_HOTKEY(KEY_F9, {
     if (currentRenderer)
         currentRenderer->setDifferenceModeEnabled(!currentRenderer->isDifferenceModeEnabled());
 })
-
-DECLARE_HOTKEY(KEY_F6, {
-    BProfiler::useAverages(!BProfiler::isUsingAverages()); 
-});
-
-static i32 storedVAO;
-
-void storeGLStates() {
-    glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &storedVAO);
-}
-
-void restoreGLStates() {
-    glBindVertexArray(storedVAO);
-}

@@ -26,7 +26,7 @@
 #define PACKED( __Declaration__ ) __pragma( pack(push, 1) ) __Declaration__ __pragma( pack(pop))
 #endif
 
-//#define DEBUG_LOG(...) log::info(__VA_ARGS__)
+// #define DEBUG_LOG(...) log::info(__VA_ARGS__)
 #define DEBUG_LOG(...)
 
 using u8  = uint8_t;

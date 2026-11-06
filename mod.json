@@ -12,7 +12,8 @@
 		"geode.node-ids": ">=v1.20.0"
 	},
 	"tags": [
-		"performance"
+		"performance",
+		"utility"
 	],
 	"links": {
 		"source": "https://github.com/IliasHDZ/Bismuth",
@@ -42,7 +43,7 @@
 			"min": 0,
 			"description": "Here, you can manually specify your GPU core count. If set at 0, Bismuth attempts to find the core count manually. If it can't find it, make sure you set this value correctly. You can also try different values to see how it affects performance."
 		},
-		"ingame_enable": {
+		"debug_tools": {
 			"name": "Enable debug tools",
 			"type": "bool",
 			"default": false,

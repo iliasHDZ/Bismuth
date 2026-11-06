@@ -1,38 +1,34 @@
-# Bismuth mod
+# Bismuth
 
 <cr>**WARNING: This mod is still in the experimental stage and
-very buggy! Alot of levels will not display correctly. This mod
+is very buggy! Alot of levels will not display correctly. This mod
 should be percieved as something to experiment with rather than
 something to use in actual gameplay.**</c>
 
-A rendering optimization mod that serves to make levels draw
-faster while also doing some of the trigger logic on the GPU.
+A rendering optimization mod that does alot of the trigger
+and visibility calculations on the GPU. Bismuth completely
+replaces and recreates GD's object rendering from scratch.
 
-This mod is also useful for creators as it comes with the
-overdraw visualizer which will help creators make their
-levels run better.
+Bismuth is **especially** effective on high object count levels and levels with exessive move/rotate trigger logic.
 
-For high end devices, the biggest bottleneck is usually
-trigger and color logic that's done on the CPU. Having
-to apply move, rotate and scale effects on many objects
-while also changing color can be a drag for the CPU.
-Which is why Bismuth does this processing on the GPU
-instead.
+Currently, this mod renders 2.1 levels best. Newer 2.2
+features and visual quirks haven't been implemented yet.
 
-For low end decives, the biggest bottleneck is drawing
-all those objects on screen. Having to write so many
-pixels can sometimes be alot of work on their small
-GPUs. Bismuth serves to reduce the amount of pixels
-to draw mainly by using advanced techniques that
-reduce overdraw.
+Bismuth currently works best on medium to high-end GPUs.
 
-The time it takes to process a frame is directly correlated
-to input latency. With Bismuth making the game faster, it
-could potentially make the game more reactive.
+For low-end GPUs like many **Intel GPUs**, the advantages
+of Bismuth's culling system are way less and in fact can
+be **slower** than vanilla. They may also crash often!
+
+This mod features **overdraw view**! A helpful feature for
+creators to visualize overdraw. Since Bismuth is still unstable,
+it is recommended to **disable Bismuth** when using overdraw view 
+for creating. Overdraw view can be enabled using **F4** in-game
+(not in editor).
 
 I am currently not accepting bugfixes as there is already alot
 of broken stuff to be fixed first.
 
-2.2 levels currently don't work correctly.
+Join the Discord server for the latest nightly builds: https://discord.gg/B6H6ZVJx9C
 
 Icon created by Saryu

@@ -7,13 +7,11 @@
 #include "ObjectUtils.hpp"
 #include "OverdrawView.hpp"
 #include "Shader.hpp"
-#include <unordered_map>
-#include <array>
-
+#include "DebugText.hpp"
 #include "DifferenceMode.hpp"
 #include "GroupManager.hpp"
 #include "ObjectBatchNode.hpp"
-#include "SAOBuffer.hpp"
+#include <unordered_map>
 
 using namespace geode;
 
@@ -69,8 +67,8 @@ public:
         return layer;
     }
 
-    inline usize getObjectSRBIndex(GameObject* object) {
-        return objectSRBIndicies[object];
+    inline usize getObjectIndex(GameObject* object) {
+        return objectIndicies[object];
     }
 
     inline bool isEnabled() { return enabled; }
@@ -90,7 +88,7 @@ public:
             differenceModeEnabled = enabled;
     }
 
-    inline bool canEnableDisableIngame() const { return ingameEnableDisable; }
+    inline bool isDebugToolsEnabled() const { return debugToolsEnabled; }
 
     inline bool isPaused() {
         return layer->m_isPaused;
@@ -111,8 +109,6 @@ public:
     
     void reset();
 
-    void drawLine(const glm::vec2& p1, const glm::vec2& p2, const glm::vec4& color);
-
 public:
     static Ref<Renderer> create(PlayLayer* layer, cocos2d::CCArray* objects);
 
@@ -127,15 +123,11 @@ private:
 
     bool enabled = false;
     bool debugTextEnabled = false;
-    bool ingameEnableDisable = false;
+    bool debugToolsEnabled = false;
 
     u64 rendererStartTime = 0;
 
-    usize spritesOnScreen = 0;
-
-    std::unordered_map<GameObject*, usize> objectSRBIndicies;
-
-    u32 timeElapsedQuery = 0;
+    std::unordered_map<GameObject*, usize> objectIndicies;
 
     glm::vec2 cameraCenterPos;
 
@@ -146,9 +138,7 @@ private:
 
     ColorChannelBlendStates colorChannelsIsBlending;
 
-    Ref<cocos2d::CCLabelBMFont> debugText;
-    Ref<cocos2d::CCLabelBMFont> debugTextOutline1;
-    Ref<cocos2d::CCLabelBMFont> debugTextOutline2;
+    DebugText* debugText;
 
     GPUTimer renderingTimer { "Rendering time" };
 
@@ -162,7 +152,7 @@ private:
     ColorChannelBuffer* colorChannelBuffer;
     UPtr<Buffer> colorChannelBufferObject = nullptr;
 
-    UPtr<Buffer> srbBuffer = nullptr;
+    UPtr<Buffer> objectInfoBuffer = nullptr;
 
     GameStateBuffer gameState;
     UPtr<Buffer> gameStateBuffer = nullptr;
@@ -172,11 +162,5 @@ private:
 
     float gameTimer = 0.0;
 
-    i64 groupStateCount;
     i64 renderedGameObjectCount;
-    i64 renderTime;
 };
-
-void storeGLStates();
-
-void restoreGLStates();

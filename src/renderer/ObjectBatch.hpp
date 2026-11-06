@@ -14,38 +14,6 @@
 
 using namespace geode;
 
-/*
-    These are the vertex attributes of the
-    object batch. They are written in this
-    macro so you don't have duplicate code
-    with the and the attrib pointer calls.
-
-    Attrib_(attributeLocation, type, name)
-
-    NOTE: The positionOffset attribute is this
-          vertex' offset from the position of
-          the object this sprite belongs to.
-
-#define OBJECT_VERTEX_ATTRIBUTES(Attrib_) \
-    Attrib_(0, vec2, positionOffset) \
-    Attrib_(1, vec2, texCoord) \
-    Attrib_(2, u32,  spriteIndex)
-
-////////////////////////////////////////////////
-
-#define VERTEX_ATTRIBUTE_AS_STRUCT_MEMBER(Id_, Type_, Name_) \
-    Type_ Name_;
-
-#define VERTICIES_PER_QUAD 4
-#define INDICIES_PER_QUAD  6
-
-struct ObjectVertex {
-    OBJECT_VERTEX_ATTRIBUTES(VERTEX_ATTRIBUTE_AS_STRUCT_MEMBER);
-};
-*/
-
-////////////////////////////////////////////////
-
 class Renderer;
 
 struct SpriteVertexTransforms {
@@ -61,7 +29,6 @@ class ObjectBatch {
 public:
     inline ObjectBatch(Renderer& renderer)
         : renderer(renderer) {}
-    ~ObjectBatch();
 
     SpriteVertexTransforms getSpriteVertexTransform(
         cocos2d::CCSprite* sprite,
@@ -101,11 +68,6 @@ public:
                it->second.count > 0;
     }
 
-    inline void bind() {
-        glBindVertexArray(vao);
-        indexBuffer->bindAs(GL_ELEMENT_ARRAY_BUFFER);
-    }
-
     inline usize getVertexBufferSize() { return vertexCount * sizeof(ObjectVertex); }
     inline void setSpriteSheetFilter(SpriteSheet sheet) { spriteSheetFilter = sheet; }
     inline const std::set<LayerKey>& getUsedLayerIds() { return usedLayerKeys; }
@@ -114,9 +76,6 @@ public:
     void predraw();
 
     void prepareCullingComputeShader();
-
-private:
-    void prepareVAO();
 
 private:
     Renderer& renderer;
@@ -134,8 +93,6 @@ private:
 
     GPUTimer cullingComputeShaderTimer { "Culling compute shader time" };
 
-    u32 vao = 0;
-
     WorkGroupScheduler workGroupScheduler;
     SortedObjectBatch* sortedBatch = nullptr;
 
@@ -144,8 +101,8 @@ private:
     std::vector<ObjectVertex> verticies;
     u32 vertexCount = 0;
 
-    std::vector<u32> indicies;
-    u32 indexCount = 0;
+    // std::vector<u32> indicies;
+    // u32 indexCount = 0;
 
     std::vector<InputSprite> inputSprites;
     // std::vector<PreCulledSprite> preCulledSprites;
@@ -155,6 +112,6 @@ private:
     SpriteVertexTransforms currentSpriteVertexTransforms;
     glm::vec2 currentSpriteObjectStartPosition;
     u32 currentSpriteVertexIndex;
-    u32 currentSpriteSRBIndex;
+    u32 currentSpriteObjectIndex;
     u32 currentSpriteIndex;
 };

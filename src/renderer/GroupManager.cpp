@@ -189,14 +189,12 @@ void GroupManager::fetchVanilaRotateGroups() {
 }
 
 void GroupManager::updateGroupStateBuffer() {
-    PROFILER_PUSH("GroupManager::updateGroupStateBuffer");
+    PROFILER_SCOPE("GroupManager::updateGroupStateBuffer");
     
     updateAlphaValues();
-
     updatePulseEntries();
 
     groupStateBuffer->flush(0, groupStateBuffer->getSize());
-    PROFILER_POP();
 }
 
 void GroupManager::storeGroupStates(StoredGroupStates& storage) {
@@ -362,7 +360,7 @@ struct PulseEntry {
 };
 
 void GroupManager::updatePulseEntries() {
-    PROFILER_PUSH("GroupManager::updatePulseEntries");
+    PROFILER_SCOPE("GroupManager::updatePulseEntries");
 
     auto effectManager = renderer.getPlayLayer()->m_effectManager;
 
@@ -421,8 +419,6 @@ void GroupManager::updatePulseEntries() {
     pulseEntryBufferEnsureSize(pulseEntries.size() * sizeof(PulseEntry));
     pulseEntryBuffer->write(std::span<PulseEntry>(pulseEntries));
     pulseEntryBuffer->flush(0, pulseEntries.size() * sizeof(PulseEntry));
-
-    PROFILER_POP();
 }
 
 #define PULSE_ENTRY_BUFFER_SIZE_STEP (32 * 1024)

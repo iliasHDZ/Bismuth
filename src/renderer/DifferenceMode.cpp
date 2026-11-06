@@ -20,7 +20,6 @@ void DifferenceMode::drawSceneHook() {
 
     bool prevEnabled = renderer.isEnabled();
 
-    // storeGLStates();
     renderer.setEnabled(false);
     glBindFramebuffer(GL_FRAMEBUFFER, vanillaFramebuffer);
     glClear(GL_COLOR_BUFFER_BIT);
@@ -28,6 +27,9 @@ void DifferenceMode::drawSceneHook() {
     CCDirector::get()->getRunningScene()->visit();
     kmGLPopMatrix();
 
+    if (!Renderer::get())
+        return;
+    
     renderer.setEnabled(true);
     glBindFramebuffer(GL_FRAMEBUFFER, bismuthFramebuffer);
     glClear(GL_COLOR_BUFFER_BIT);
@@ -37,7 +39,10 @@ void DifferenceMode::drawSceneHook() {
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-    storeGLStates();
+    if (!Renderer::get())
+        return;
+
+    storeVAO();
 
     shader->use();
     shader->setTexture(shader->location("u_vanillaFrame"), 0, vanillaTexture);
@@ -47,7 +52,7 @@ void DifferenceMode::drawSceneHook() {
 
     drawFullscreenQuad();
 
-    restoreGLStates();
+    restoreVAO();
 
     CCDirector::get()->getOpenGLView()->swapBuffers();
 }
@@ -75,8 +80,6 @@ static u32 createColorFramebuffer(u32 colorTextureAttachment) {
 }
 
 void DifferenceMode::prepare(u32 width, u32 height) {
-    storeGLStates();
-
     destroyFramebuffers();
 
     vanillaTexture     = createFramebufferTexture(width, height);
@@ -86,8 +89,6 @@ void DifferenceMode::prepare(u32 width, u32 height) {
 
     if (!shader)
         shader = Shader::create("fullscreen.vert", "differenceMode.frag");
-
-    restoreGLStates();
 }
 
 void DifferenceMode::destroyFramebuffers() {

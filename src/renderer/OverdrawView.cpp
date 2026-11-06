@@ -74,7 +74,7 @@ void OverdrawView::draw() {
     auto currentSize = CCDirector::get()->getOpenGLView()->getWindowedSize();
     stencilBuffer.resize((usize)currentSize.width * (usize)currentSize.height);
 
-    storeGLStates();
+    storeVAO();
 
     glReadPixels(0, 0, currentSize.width, currentSize.height, GL_STENCIL_INDEX, GL_UNSIGNED_BYTE, stencilBuffer.data());
     glDisable(GL_STENCIL_TEST);
@@ -122,7 +122,7 @@ void OverdrawView::draw() {
 
     drawFullscreenQuad();
 
-    restoreGLStates();
+    restoreVAO();
 }
 
 OverdrawView* OverdrawView::get() {

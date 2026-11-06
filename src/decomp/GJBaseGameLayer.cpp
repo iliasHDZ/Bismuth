@@ -184,7 +184,7 @@ void decomp_GJBaseGameLayer::processRotationActions() {
 }
 
 void decomp_GJBaseGameLayer::optimized_processRotationActions() {
-    PROFILER_PUSH("optimized_processRotationActions");
+    PROFILER_SCOPE("optimized_processRotationActions");
 
     float objLayerScaleX = m_objectLayer->getScaleX();
     float objLayerScaleY = m_objectLayer->getScaleY();
@@ -342,8 +342,6 @@ void decomp_GJBaseGameLayer::optimized_processRotationActions() {
     m_objectLayer->setScaleX(objLayerScaleX);
     m_objectLayer->setScaleY(objLayerScaleY);
     m_objectLayer->setPosition(objLayerPos);
-
-    PROFILER_POP();
 }
 
 void decomp_GJBaseGameLayer::processFollowActions() {
