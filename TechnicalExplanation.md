@@ -55,7 +55,7 @@ then spritesheet, then finally blending.
 To ensure that GD does not draw objects that are offscreen. GD does
 **visibility checks**.
 
-It checks whether objects are offscreen. If they are, their sprites are
+It checks whether objects are on screen. If they are, their sprites are
 added to their appropriate **sprite batch** to be sent to the GPU.
 If they aren't, they are removed from their sprite batch. The act
 of removing offscreen objects is also known as **culling**.

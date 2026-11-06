@@ -24,7 +24,7 @@ This mod features **overdraw view**! A helpful feature for
 creators to visualize overdraw. Since Bismuth is still unstable,
 it is recommended to **disable Bismuth** when using overdraw view 
 for creating. Overdraw view can be enabled using **F4** in-game
-(not in editor).
+or in the editor.
 
 I am currently not accepting bugfixes as there is already alot
 of broken stuff to be fixed first.
