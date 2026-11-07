@@ -2,11 +2,6 @@
 
 #include "shared.h"
 
-//// VERTEX ATTRIBUTES ////
-// layout (location = 0) in vec2 a_positionOffset;
-// layout (location = 1) in vec2 a_texCoord;
-// layout (location = 2) in int  a_spriteIndex;
-
 //// VARIABLES TO BE TRANSFERED TO THE FRAGMENT SHADER ////
 out vec2 t_texCoord;
 out vec4 t_color;

@@ -505,11 +505,13 @@ void Renderer::setEnabled(bool enabled) {
     for (auto batch : vanillaBatchNodes)
         batch->setVisible(!enabled);
 
-    // For checkpoints
-    layer->m_game2LayerT1->setVisible(true);
-    // For end portal
-    layer->m_gameBlendingLayerT1->setVisible(true);
-    layer->m_gameLayerT1->setVisible(true);
+    if (useOptimizations()) {
+        // For checkpoints
+        layer->m_game2LayerT1->setVisible(true);
+        // For end portal
+        layer->m_gameBlendingLayerT1->setVisible(true);
+        layer->m_gameLayerT1->setVisible(true);
+    }
 
     updateDebugText();
 }
