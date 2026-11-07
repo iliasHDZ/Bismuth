@@ -1,16 +1,14 @@
-#define HSV uint
+struct PackedHSV {
+    uint hueAndFlags;
+    uint satAndVal;
+};
 
-#define HSV_HUE_BIT  16
-#define HSV_HUE_MASK 0x1ff
-#define HSV_SAT_BIT  8
-#define HSV_SAT_MASK 0xff
-#define HSV_VAL_BIT  0
-#define HSV_VAL_MASK 0xff
 #define HSV_SAT_ADD  0x20000000
 #define HSV_VAL_ADD  0x10000000
 
 #ifdef GLSL
 
+// FIXME: The HSV conversion may be incorrect
 // Credits to sam hocevar for the following two functions
 vec3 rgb2hsv(vec3 c) {
     vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
@@ -55,21 +53,21 @@ vec4 applyHSVStruct(HSVStruct hsvValue, vec4 color) {
     return vec4(hsv2rgb(hsv), color.a);
 }
 
-HSVStruct readHSV(HSV hsvValue) {
+HSVStruct readHSV(PackedHSV packedHsv) {
     HSVStruct hsv;
-    hsv.hue = float(int((hsvValue >> HSV_HUE_BIT) & HSV_HUE_MASK) - 256) / 360.0;
-    hsv.sat = float((hsvValue >> HSV_SAT_BIT) & HSV_SAT_MASK) / 127.5;
-    hsv.val = float((hsvValue >> HSV_VAL_BIT) & HSV_VAL_MASK) / 127.5;
-    hsv.satAdd = (hsvValue & HSV_SAT_ADD) != 0;
-    hsv.valAdd = (hsvValue & HSV_VAL_ADD) != 0;
+    hsv.hue = unpackHalf2x16(packedHsv.hueAndFlags).x / 360.0;
 
-    if (hsv.satAdd) hsv.sat -= 1.0;
-    if (hsv.valAdd) hsv.val -= 1.0;
+    vec2 satAndVal = unpackHalf2x16(packedHsv.satAndVal);
+    hsv.sat = satAndVal.x;
+    hsv.val = satAndVal.y;
+
+    hsv.satAdd = (packedHsv.hueAndFlags & HSV_SAT_ADD) != 0;
+    hsv.valAdd = (packedHsv.hueAndFlags & HSV_VAL_ADD) != 0;
 
     return hsv;
 }
 
-vec4 applyHSV(HSV hsvValue, vec4 color) {
+vec4 applyHSV(PackedHSV hsvValue, vec4 color) {
     return applyHSVStruct(readHSV(hsvValue), color);
 }
 

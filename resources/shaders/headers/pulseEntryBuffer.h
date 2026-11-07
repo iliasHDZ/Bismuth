@@ -9,6 +9,7 @@
 struct PulseGroupEntry {
     uint flags;
     uint colorOrHSV;
+    uint hsvSatAndVal;
 };
 
 STORAGE_BUFFER(PULSE_ENTRY_BUFFER_BINDING) PulseEntryBuffer {
@@ -17,7 +18,7 @@ STORAGE_BUFFER(PULSE_ENTRY_BUFFER_BINDING) PulseEntryBuffer {
 
 #ifdef GLSL
 
-vec3 applyPulseEntry(vec3 color, uint flags, uint colorOrHSV);
+vec3 applyPulseEntry(vec3 color, PulseGroupEntry entry);
 
 vec3 applyPulseEntries(vec3 color, uint pulseIndex, bool isBaseColor) {
     for (;; pulseIndex++) {
@@ -31,21 +32,26 @@ vec3 applyPulseEntries(vec3 color, uint pulseIndex, bool isBaseColor) {
         if ((flags & PULSE_FLAG_IS_DETAIL_ONLY) != 0 && isBaseColor)
             continue;
 
-        color = applyPulseEntry(color, flags, u_pulseEntries[pulseIndex].colorOrHSV);
+        color = applyPulseEntry(color, u_pulseEntries[pulseIndex]);
     }
 
     return color;
 }
 
-vec3 applyPulseEntry(vec3 color, uint flags, uint colorOrHSV) {
-    float value = PULSE_FLAG_GET_VALUE(flags);
+vec3 applyPulseEntry(vec3 color, PulseGroupEntry entry) {
+    float value = PULSE_FLAG_GET_VALUE(entry.flags);
 
     if (value <= 0.0f)
         return color;
 
-    if ((flags & PULSE_FLAG_IS_HSV) != 0) {
-        uint colorChannel = PULSE_FLAG_GET_COLOR_CHANNEL(flags);
-        HSVStruct hsv = readHSV(colorOrHSV);
+    if ((entry.flags & PULSE_FLAG_IS_HSV) != 0) {
+        uint colorChannel = PULSE_FLAG_GET_COLOR_CHANNEL(entry.flags);
+
+        PackedHSV packedHsv;
+        packedHsv.hueAndFlags = entry.colorOrHSV;
+        packedHsv.satAndVal = entry.hsvSatAndVal;
+
+        HSVStruct hsv = readHSV(packedHsv);
 
         vec3 srcColor = color;
         if (colorChannel != 0)
@@ -54,7 +60,7 @@ vec3 applyPulseEntry(vec3 color, uint flags, uint colorOrHSV) {
         if (value == 1.0f)
             return applyHSVStruct(hsv, vec4(srcColor, 1.0)).rgb;
 
-        if ((flags & PULSE_FLAG_IS_DYNAMIC_HSV) != 0)
+        if ((entry.flags & PULSE_FLAG_IS_DYNAMIC_HSV) != 0)
             hsv = getMultipliedHSV(hsv, value);
 
         vec3 dstColor = applyHSVStruct(hsv, vec4(srcColor, 1.0)).rgb;
@@ -62,7 +68,7 @@ vec3 applyPulseEntry(vec3 color, uint flags, uint colorOrHSV) {
         return mix(color, dstColor, value);
     }
 
-    vec3 dstColor = unpackUnorm4x8(colorOrHSV).rgb;
+    vec3 dstColor = unpackUnorm4x8(entry.colorOrHSV).rgb;
 
     return mix(color, dstColor, value);
 }

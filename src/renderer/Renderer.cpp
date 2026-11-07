@@ -22,17 +22,16 @@ using namespace geode::prelude;
 
 static Renderer* currentRenderer;
 
-u32 convertToShaderHSV(const ccHSVValue& hsv) {
-    u32 hue = hsv.h + 256.f;
-    u32 sat = ( hsv.s + (hsv.absoluteSaturation ? 1.0 : 0.0) ) * 127.5f;
-    u32 val = ( hsv.v + (hsv.absoluteBrightness ? 1.0 : 0.0) ) * 127.5f;
+PackedHSV packHSV(const ccHSVValue& hsv) {
+    PackedHSV ret;
 
-    u32 ret = (hue & HSV_HUE_MASK) << HSV_HUE_BIT |
-              (sat & HSV_SAT_MASK) << HSV_SAT_BIT |
-              (val & HSV_VAL_MASK) << HSV_VAL_BIT;
+    ret.hueAndFlags = glm::packHalf2x16({hsv.h, 0}) & 0xffff;
 
-    if (hsv.absoluteSaturation) ret |= HSV_SAT_ADD;
-    if (hsv.absoluteBrightness) ret |= HSV_VAL_ADD;
+    if (hsv.absoluteSaturation) ret.hueAndFlags |= HSV_SAT_ADD;
+    if (hsv.absoluteBrightness) ret.hueAndFlags |= HSV_VAL_ADD;
+
+    ret.satAndVal = glm::packHalf2x16({hsv.s, hsv.v});
+
     return ret;
 }
 
@@ -351,12 +350,12 @@ void Renderer::generateStaticRenderingBuffer(std::vector<GameObject*>& objects) 
 
         if (object->m_baseColor && object->m_baseColor->m_usesHSV) {
             objectInfo->flags |= OBJECT_FLAG_HAS_BASE_HSV;
-            objectInfo->baseHSV = convertToShaderHSV(object->m_baseColor->m_hsv);
+            objectInfo->baseHSV = packHSV(object->m_baseColor->m_hsv);
         }
 
         if (object->m_detailColor && object->m_detailColor->m_usesHSV) {
             objectInfo->flags |= OBJECT_FLAG_HAS_DETAIL_HSV;
-            objectInfo->detailHSV = convertToShaderHSV(object->m_detailColor->m_hsv);
+            objectInfo->detailHSV = packHSV(object->m_detailColor->m_hsv);
         }
 
         float opacity = (object->m_opacityMod2 > 0.0) ? object->m_opacityMod2 : 1.0;
@@ -408,7 +407,7 @@ void Renderer::updateDebugText() {
 
     if (!enabled) {
         if (differenceModeEnabled) {
-            text += "Difference mode is enabled (F9 to enable)\n";
+            text += "Difference mode is enabled (F9 to disable)\n";
         } else
             text += "Bismuth renderer is disabled (F8 to enable)\n";
     } else {

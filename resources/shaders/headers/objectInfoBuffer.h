@@ -22,9 +22,9 @@ struct ObjectInfo {
     float fadeMargin;
     uint opacityValues;
     uint baseColorChannelId;
-    HSV baseHSV;
+    PackedHSV baseHSV;
     uint detailColorChannelId;
-    HSV detailHSV;
+    PackedHSV detailHSV;
 };
 
 /*

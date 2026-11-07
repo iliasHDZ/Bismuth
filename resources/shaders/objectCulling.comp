@@ -31,7 +31,6 @@ uint culledIndexBufferOutputIndex = 0;
 bool isObjectOnScreen();
 float calculateAudioScale();
 vec4 calculateInvisibleBlockColorAndOpacity(vec4 color);
-vec4 applyHSV(HSV hsvValue, vec4 color);
 
 //// PROCESS SPRITE FUNCTION ////
 void processSprite(uint preCulledSpriteIndex) {

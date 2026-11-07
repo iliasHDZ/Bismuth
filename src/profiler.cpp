@@ -41,7 +41,7 @@ class $modify(MyCCDisplayLinkDirector, cocos2d::CCDisplayLinkDirector) {
 
         if (takeSnapshotNextFrame) {
             isTakingSnapshot = true;
-            profiler::isTakingGPUTime = false;//Renderer::get() != nullptr;
+            profiler::isTakingGPUTime = Renderer::get() != nullptr;
             takeSnapshotNextFrame = false;
             timeSpentInFunction.clear();
             if (!profiler::isTakingGPUTime)

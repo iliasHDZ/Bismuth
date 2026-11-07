@@ -331,7 +331,7 @@ void GroupManager::updateAlphaValues() {
 struct PulseEntry {
     u32 flags = 0;
     union {
-        u32 hsv;
+        PackedHSV hsv;
         ccColor4B color;
     };
 
@@ -348,7 +348,7 @@ struct PulseEntry {
         if (action.m_pulseEffectType == PulseEffectType::Hsv) {
             ret.flags |= PULSE_FLAG_IS_HSV;
             ret.flags |= (action.m_colorIndex & 0x3ff) << 16;
-            ret.hsv = convertToShaderHSV(action.m_hsv);
+            ret.hsv = packHSV(action.m_hsv);
         } else {
             ret.color = { action.m_color.r, action.m_color.g, action.m_color.b, 255 };
         }

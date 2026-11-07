@@ -55,6 +55,8 @@ public:
         const cocos2d::CCAffineTransform& transform
     );
 
+    void addSpriteWithCustomVanillaMesh(cocos2d::CCSprite* sprite);
+
     void writeGameObject(GameObject* object);
 
     void finishWriting();

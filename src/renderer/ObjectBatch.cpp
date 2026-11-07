@@ -5,7 +5,6 @@
 #include "glm/fwd.hpp"
 #include "math/ConvexList.hpp"
 #include "math/ConvexPolygon.hpp"
-#include <culling/SpriteDrawMap.hpp>
 #include "../profiler.hpp"
 
 using namespace geode::prelude;
@@ -117,7 +116,11 @@ void ObjectBatch::writeSpriteMeshFromConvexList(const ConvexList& list) {
     });
 }
 
-static SpriteDrawMap drawMap;
+static bool doesObjectHaveCustomVanillaMesh(GameObject* object) {
+    int id = object->m_objectID;
+
+    return id >= 1769 && id <= 1810 && id != 1798;
+}
 
 void ObjectBatch::addSprite(
     GameObject* object,
@@ -134,28 +137,30 @@ void ObjectBatch::addSprite(
 
     usize trianglesStart = verticies.size() / 3;
 
-    ConvexList* spriteMesh = SpriteMeshDictionary::getSpriteMeshForSprite(sprite);
-
-    drawMap.addSprite(object, sprite, type, {});
-
     currentSpriteIndex = inputSprites.size();
 
-    if (spriteMesh) {
-        writeSpriteMeshFromConvexList(*spriteMesh);
+    if (doesObjectHaveCustomVanillaMesh(object)) {
+        addSpriteWithCustomVanillaMesh(sprite);
     } else {
-        writeSpriteVertex({ 0, 0 });
-        writeSpriteVertex({ 1, 0 });
-        writeSpriteVertex({ 1, 1 });
-        writeSpriteVertex({ 1, 1 });
-        writeSpriteVertex({ 0, 1 });
-        writeSpriteVertex({ 0, 0 });
+        ConvexList* spriteMesh = SpriteMeshDictionary::getSpriteMeshForSprite(sprite);
 
-        // writeSpriteIndex(QUAD_BL);
-        // writeSpriteIndex(QUAD_TL);
-        // writeSpriteIndex(QUAD_TR);
-        // writeSpriteIndex(QUAD_BL);
-        // writeSpriteIndex(QUAD_TR);
-        // writeSpriteIndex(QUAD_BR);
+        if (spriteMesh) {
+            writeSpriteMeshFromConvexList(*spriteMesh);
+        } else {
+            writeSpriteVertex({ 0, 0 });
+            writeSpriteVertex({ 1, 0 });
+            writeSpriteVertex({ 1, 1 });
+            writeSpriteVertex({ 1, 1 });
+            writeSpriteVertex({ 0, 1 });
+            writeSpriteVertex({ 0, 0 });
+
+            // writeSpriteIndex(QUAD_BL);
+            // writeSpriteIndex(QUAD_TL);
+            // writeSpriteIndex(QUAD_TR);
+            // writeSpriteIndex(QUAD_BL);
+            // writeSpriteIndex(QUAD_TR);
+            // writeSpriteIndex(QUAD_BR);
+        }
     }
 
     usize trianglesCount = verticies.size() / 3 - trianglesStart;
@@ -174,6 +179,25 @@ void ObjectBatch::addSprite(
     usedLayerKeys.insert({zLayer, spriteSheet, true});
 
     workGroupScheduler.addSprite(object, sprite, type, currentSpriteIndex, trianglesCount);
+}
+
+void ObjectBatch::addSpriteWithCustomVanillaMesh(cocos2d::CCSprite* sprite) {
+    auto quad = sprite->getQuad();
+
+    CCPoint offset = sprite->getOffsetPosition();
+    CCPoint size   = sprite->getTextureRect().size;
+
+    CCPoint bl = (ccp(quad.bl.vertices.x, quad.bl.vertices.y) - offset) / size;
+    CCPoint br = (ccp(quad.br.vertices.x, quad.br.vertices.y) - offset) / size;
+    CCPoint tl = (ccp(quad.tl.vertices.x, quad.tl.vertices.y) - offset) / size;
+    CCPoint tr = (ccp(quad.tr.vertices.x, quad.tr.vertices.y) - offset) / size;
+
+    writeSpriteVertex(ccPointToGLM(bl));
+    writeSpriteVertex(ccPointToGLM(br));
+    writeSpriteVertex(ccPointToGLM(tr));
+    writeSpriteVertex(ccPointToGLM(tr));
+    writeSpriteVertex(ccPointToGLM(tl));
+    writeSpriteVertex(ccPointToGLM(bl));
 }
 
 void ObjectBatch::writeGameObject(GameObject* object) {

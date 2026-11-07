@@ -3,13 +3,14 @@
 <cr>**WARNING: This mod is still in the experimental stage and
 is very buggy! Alot of levels will not display correctly. This mod
 should be percieved as something to experiment with rather than
-something to use in actual gameplay.**</c>
+something to use in actual play.**</c>
 
 A rendering optimization mod that does alot of the trigger
 and visibility calculations on the GPU. Bismuth completely
 replaces and recreates GD's object rendering from scratch.
 
-Bismuth is **especially** effective on high object count levels and levels with exessive move/rotate trigger logic.
+Bismuth is **especially** effective on high object count levels
+and levels with exessive move/rotate trigger logic.
 
 Currently, this mod renders 2.1 levels best. Newer 2.2
 features and visual quirks haven't been implemented yet.
@@ -18,13 +19,13 @@ Bismuth currently works best on medium to high-end GPUs.
 
 For low-end GPUs like many **Intel GPUs**, the advantages
 of Bismuth's culling system are way less and in fact can
-be **slower** than vanilla. They may also crash often!
+be **slower** than vanilla. They may also crash sometimes!
 
 This mod features **overdraw view**! A helpful feature for
 creators to visualize overdraw. Since Bismuth is still unstable,
-it is recommended to **disable Bismuth** when using overdraw view 
-for creating. Overdraw view can be enabled using **F4** in-game
-or in the editor.
+it is recommended to **disable Bismuth** in the **settings window**
+when using overdraw view for creating. Overdraw view can be enabled
+by pressing **F4** in-game or in the editor.
 
 I am currently not accepting bugfixes as there is already alot
 of broken stuff to be fixed first.
