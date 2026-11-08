@@ -33,6 +33,7 @@ public:
     }
 
     inline void bindAsStorageBuffer(u32 binding) {
+        // geode::log::info("SHADER STORAGE BUFFER, {}, {}", binding, byteSizeToString(size));
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, binding, id);
     }
 

@@ -254,6 +254,10 @@ class $modify(RendererGJBaseGameLayer, GJBaseGameLayer) {
             siphon_processFollowActions();
     }
 
+    void processPlayerFollowActions(float dt) {
+        ((decomp_GJBaseGameLayer*)this)->processPlayerFollowActions(dt);
+    }
+
     void toggleGroup(int id, bool activate) {
         GJBaseGameLayer::toggleGroup(id, activate);
         auto renderer = Renderer::get();

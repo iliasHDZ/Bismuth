@@ -68,6 +68,7 @@ private:
 private:
     struct SpriteEntry {
         i32 zOrder;
+        u32 entryIndex;
         ZLayer zLayer;
         SpriteSheet spriteSheet;
         u16 colorChannelId;

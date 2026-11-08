@@ -9,8 +9,8 @@ A rendering optimization mod that does alot of the trigger
 and visibility calculations on the GPU. Bismuth completely
 replaces and recreates GD's object rendering from scratch.
 
-Bismuth is **especially** effective on high object count levels
-and levels with exessive move/rotate trigger logic.
+Bismuth is **especially** effective with high object counts
+and exessive move/rotate trigger logic.
 
 Currently, this mod renders 2.1 levels best. Newer 2.2
 features and visual quirks haven't been implemented yet.

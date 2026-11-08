@@ -13,8 +13,9 @@ $on_mod(Loaded) {
 std::string byteSizeToString(usize size) {
     std::string unit = "B";
     double dsize = size;
-    if (dsize > 1000.0) { dsize /= 1000.0; unit = "kB"; }
-    if (dsize > 1000.0) { dsize /= 1000.0; unit = "MB"; }
+    if (dsize > 1024.0) { dsize /= 1024.0; unit = "KiB"; }
+    if (dsize > 1024.0) { dsize /= 1024.0; unit = "MiB"; }
+    if (dsize > 1024.0) { dsize /= 1024.0; unit = "GiB"; }
     return fmt::format("{:.3f}{}", dsize, unit);
 }
 

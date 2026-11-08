@@ -17,6 +17,12 @@ using namespace geode;
 
 PackedHSV packHSV(const cocos2d::ccHSVValue& hsv);
 
+struct TriggerStatistics {
+    usize moveTriggerApplyCount = 0;
+    usize rotateTriggerApplyCount = 0;
+    usize followTriggerApplyCount = 0;
+};
+
 class Renderer : public cocos2d::CCNode {
 private:
     inline Renderer()
@@ -107,6 +113,11 @@ public:
 
     inline const ColorChannelBlendStates& getColorChannelBlendStates() { return colorChannelsIsBlending; }
     
+    inline TriggerStatistics& getTriggerStatistics() {
+        if (!triggerStatistics) triggerStatistics = TriggerStatistics {};
+        return triggerStatistics.value();
+    }
+
     void reset();
 
 public:
@@ -139,6 +150,8 @@ private:
     ColorChannelBlendStates colorChannelsIsBlending;
 
     DebugText* debugText;
+
+    std::optional<TriggerStatistics> triggerStatistics;
 
     GPUTimer renderingTimer { "Rendering time" };
 

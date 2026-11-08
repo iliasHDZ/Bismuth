@@ -6,6 +6,7 @@
 out vec2 t_texCoord;
 out vec4 t_color;
 
+//// VERTEX BUFFER ////
 STORAGE_BUFFER(VERTEX_BUFFER_BINDING) VertexBuffer {
     ObjectVertex u_verticies[];
 };

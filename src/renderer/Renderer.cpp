@@ -74,6 +74,12 @@ bool Renderer::init(PlayLayer* layer, CCArray* levelObjects) {
 
     log::info("OpenGL Version: {}", (const char*)glGetString(GL_VERSION));
 
+    i64 value = 0;
+    glGetInteger64v(GL_MAX_SHADER_STORAGE_BLOCK_SIZE, &value);
+    log::info("GL_MAX_SHADER_STORAGE_BLOCK_SIZE: {}", byteSizeToString(value));
+    glGetInteger64v(GL_MAX_SHADER_STORAGE_BUFFER_BINDINGS, &value);
+    log::info("GL_MAX_SHADER_STORAGE_BUFFER_BINDINGS: {}", value);
+
     const char* fontTexture = GameManager::get()->getFontTexture(GameManager::get()->m_loadedFont);
 
     auto tcache = cocos2d::CCTextureCache::get();
@@ -398,8 +404,7 @@ void Renderer::draw() {
 void Renderer::finish() {
     renderingTimer.stop();
 
-    if (debugText->isVisible())
-        updateDebugText();
+    updateDebugText();
 }
 
 void Renderer::updateDebugText() {
@@ -419,8 +424,7 @@ void Renderer::updateDebugText() {
             text += fmt::format("{}\n", (const char*)glGetString(GL_RENDERER));
             text += "\n";
             text += "Press F3 to hide this screen\n";
-        } else if (differenceModeEnabled)
-            text += "_\n";
+        }
     }
 
     debugText->setText(text);

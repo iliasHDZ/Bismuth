@@ -2,6 +2,8 @@
 
 using namespace geode::prelude;
 
+static constexpr CCPoint padding = {3, 3};
+
 void DebugText::setText(const std::string& str) {
     if (str == "") {
         setVisible(false);
@@ -11,37 +13,26 @@ void DebugText::setText(const std::string& str) {
     setVisible(true);
 
     label->setString(str.c_str());
-    labelOutline1->setString(str.c_str());
-    labelOutline2->setString(str.c_str());
+    backRectangle->setContentSize(label->getScaledContentSize() + padding * 2);
 }
 
 bool DebugText::init() {
+    backRectangle = CCLayerColor::create();
     label = CCLabelBMFont::create("", "chatFont.fnt");
-    labelOutline1 = CCLabelBMFont::create("", "chatFont.fnt");
-    labelOutline2 = CCLabelBMFont::create("", "chatFont.fnt");
-
-    labelOutline1->setColor({0, 0, 0});
-    labelOutline1->setOpacity(200);
-    labelOutline2->setColor({0, 0, 0});
-    labelOutline2->setOpacity(200);
 
     setAnchorPoint({0, 1});
-    setPosition({1, CCDirector::get()->getWinSize().height - 8});
+    setPosition({0, CCDirector::get()->getWinSize().height});
+
+    backRectangle->ignoreAnchorPointForPosition(false);
+    backRectangle->setAnchorPoint({0, 1});
+    backRectangle->setColor({0, 0, 0});
+    backRectangle->setOpacity(128);
+    addChild(backRectangle, 500);
 
     label->setAnchorPoint({0, 1});
-    label->setPosition(0, 0);
+    label->setPosition(padding * ccp(1, -1));
     label->setScale(0.5);
     addChild(label, 1000);
-
-    labelOutline1->setAnchorPoint({0, 1});
-    labelOutline1->setPosition(ccp(-0.5, -0.5));
-    labelOutline1->setScale(0.5);
-    addChild(labelOutline1, 999);
-
-    labelOutline2->setAnchorPoint({0, 1});
-    labelOutline2->setPosition(ccp(0.5, 0.5));
-    labelOutline2->setScale(0.5);
-    addChild(labelOutline2, 999);
 
     return true;
 }

@@ -12,7 +12,6 @@ protected:
     bool init() override;
 
 private:
+    cocos2d::CCLayerColor* backRectangle;
     cocos2d::CCLabelBMFont* label;
-    cocos2d::CCLabelBMFont* labelOutline1;
-    cocos2d::CCLabelBMFont* labelOutline2;
 };

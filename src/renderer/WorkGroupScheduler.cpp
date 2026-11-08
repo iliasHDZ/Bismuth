@@ -70,6 +70,7 @@ void WorkGroupScheduler::addSprite(
 ) {
     spriteEntries.push_back({
         .zOrder = object->getObjectZOrder(),
+        .entryIndex = (u32)spriteEntries.size(),
         .zLayer = object->getObjectZLayer(),
         .spriteSheet = ObjectUtils::getSpritesheetOfObject(object, type),
         .colorChannelId = (u16)ObjectUtils::getSpriteColorChannel(type, object, sprite),
@@ -215,6 +216,7 @@ void WorkGroupScheduler::GenerationJob::loadAndSortSprites(const std::vector<Spr
 
     for (auto& [key, layer] : sortedSpriteLayers) {
         std::sort(layer.begin(), layer.end(), [](const SpriteEntry* a, const SpriteEntry* b) {
+            if (a->zOrder == b->zOrder) return a->entryIndex < b->entryIndex;
             return a->zOrder < b->zOrder;
         });
     }

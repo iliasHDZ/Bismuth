@@ -15,5 +15,7 @@ public:
 
     void optimized_processFollowActions();
 
+    void processPlayerFollowActions(float dt);
+
     void processMoveActionsStep(float dt, bool visibleFrame);
 };

@@ -480,6 +480,10 @@ void decomp_GJBaseGameLayer::optimized_processFollowActions() {
     }
 }
 
+void decomp_GJBaseGameLayer::processPlayerFollowActions(float dt) {
+    
+}
+
 // UNTESTED
 void decomp_GJBaseGameLayer::processMoveActionsStep(float dt, bool visibleFrame) {
     m_unked0 = 0;
