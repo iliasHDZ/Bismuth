@@ -226,6 +226,8 @@ bool Renderer::init(PlayLayer* layer, CCArray* levelObjects) {
         )->show();
     }
 
+    setID("bismuth-renderer");
+
     log::info("Renderer initialized");
     return true;
 }
@@ -233,6 +235,8 @@ bool Renderer::init(PlayLayer* layer, CCArray* levelObjects) {
 void Renderer::generateBatchNodes() {
     for (const auto& id : objectBatch.getUsedLayerIds()) {
         auto batchNode = ObjectBatchNode::create(id);
+        batchNode->setID(id.asID());
+
         if (batchNode) {
             auto node = getSpriteBatchNodeWithLayerId(id);
 
@@ -244,6 +248,11 @@ void Renderer::generateBatchNodes() {
             layer->m_objectLayer->addChild(batchNode, node->getZOrder());
             batchNodes.push_back(batchNode);
         }
+    }
+
+    for (auto node : CCArrayExt<CCNode*, false>(layer->m_batchNodes)) {
+        if (node && dynamic_cast<CCSpriteBatchNode*>(node))
+            vanillaBatchNodes.insert((CCSpriteBatchNode*)node);
     }
 }
 
@@ -514,7 +523,7 @@ void Renderer::setEnabled(bool enabled) {
         return;
 
     this->enabled = enabled;
-    this->setVisible(enabled);
+    setVisible(enabled);
     for (auto node : batchNodes)
         node->setVisible(enabled);
     for (auto batch : vanillaBatchNodes)

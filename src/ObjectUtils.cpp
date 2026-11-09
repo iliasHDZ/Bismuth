@@ -5,32 +5,32 @@ using namespace geode::prelude;
 
 const char* zLayerAsString(ZLayer zLayer) {
     switch (zLayer) {
-    case ZLayer::B5:      return "B5";
-    case ZLayer::B4:      return "B4";
-    case ZLayer::B3:      return "B3";
-    case ZLayer::B2:      return "B2";
-    case ZLayer::B1:      return "B1";
+    case ZLayer::B5:      return "b5";
+    case ZLayer::B4:      return "b4";
+    case ZLayer::B3:      return "b3";
+    case ZLayer::B2:      return "b2";
+    case ZLayer::B1:      return "b1";
     default:
-    case ZLayer::Default: return "Default";
-    case ZLayer::T1:      return "T1";
-    case ZLayer::T2:      return "T2";
-    case ZLayer::T3:      return "T3";
-    case ZLayer::T4:      return "T4";
+    case ZLayer::Default: return "default";
+    case ZLayer::T1:      return "t1";
+    case ZLayer::T2:      return "t2";
+    case ZLayer::T3:      return "t3";
+    case ZLayer::T4:      return "t4";
     }
 }
 
 const char* spriteSheetAsString(SpriteSheet spriteSheet) {
     switch (spriteSheet) {
-    case SpriteSheet::GLOW:     return "GLOW";
-    case SpriteSheet::PARTICLE: return "PARTICLE";
-    case SpriteSheet::PIXEL:    return "PIXEL";
-    case SpriteSheet::GAME_2:   return "GAME_2";
-    case SpriteSheet::FIRE:     return "FIRE";
-    case SpriteSheet::TEXT:     return "TEXT";
-    case SpriteSheet::SPECIAL:  return "SPECIAL";
+    case SpriteSheet::GLOW:     return "glow";
+    case SpriteSheet::PARTICLE: return "particle";
+    case SpriteSheet::PIXEL:    return "pixel";
+    case SpriteSheet::GAME_2:   return "game2";
+    case SpriteSheet::FIRE:     return "fire";
+    case SpriteSheet::TEXT:     return "text";
+    case SpriteSheet::SPECIAL:  return "special";
     default:
-    case SpriteSheet::_UNK:     return "_UNK"; 
-    case SpriteSheet::GAME_1:   return "GAME_1";
+    case SpriteSheet::_UNK:     return "unk"; 
+    case SpriteSheet::GAME_1:   return "game";
     }
 }
 

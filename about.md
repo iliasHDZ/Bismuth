@@ -15,6 +15,12 @@ and exessive move/rotate trigger logic.
 Currently, this mod renders 2.1 levels best. Newer 2.2
 features and visual quirks haven't been implemented yet.
 
+Levels with great results:
+- Peaceful
+- A daydream journey
+- Departure
+- Slaughterhouse
+
 Bismuth currently works best on medium to high-end GPUs.
 
 For low-end GPUs like many **Intel GPUs**, the advantages
