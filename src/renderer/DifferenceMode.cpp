@@ -50,6 +50,7 @@ void DifferenceMode::drawSceneHook() {
     shader->setFloat("u_intensity", intensity);
     shader->setFloat("u_backdropIntensity", backdropIntensity);
 
+    ccGLBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     drawFullscreenQuad();
 
     restoreVAO();
@@ -122,6 +123,9 @@ class $modify(DifferenceModeCCDirector, CCDirector) {
             setNextScene();
         m_uTotalFrames++;
 
+        auto oldDT = m_fDeltaTime;
+        m_fDeltaTime = 0.0f;
         diffMode->drawSceneHook();
+        m_fDeltaTime = oldDT;
     }
 };

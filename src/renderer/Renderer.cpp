@@ -123,14 +123,15 @@ bool Renderer::init(PlayLayer* layer, CCArray* levelObjects) {
         DEBUG_LOG("  - zorder: {}", object->getObjectZOrder());
         DEBUG_LOG("  - blending: {}", object->m_baseOrDetailBlending);
         DEBUG_LOG("  - spritesheet: {}", object->getParentMode());
-        DEBUG_LOG("  - glowColorIsLBG: {}", object->m_glowColorIsLBG);
         DEBUG_LOG("  - customGlowColor: {}", object->m_customGlowColor);
+        DEBUG_LOG("  - glowColorIsLBG: {}", object->m_glowColorIsLBG);
+        DEBUG_LOG("  - cantColorGlow: {}", object->m_cantColorGlow);
+        DEBUG_LOG("  - glowSprite.color: {}", object->m_glowSprite ? object->m_glowSprite->getColor() : ccColor3B {0, 0, 0});
         DEBUG_LOG("  - opacityMod: {}", object->m_opacityMod);
         DEBUG_LOG("  - isDecoration2: {}", object->m_isDecoration2);
         DEBUG_LOG("  - colorSprite: {}", object->m_colorSprite);
         DEBUG_LOG("  - glowSprite: {}", object->m_glowSprite);
         DEBUG_LOG("  - isObjectBlack: {}", object->m_isObjectBlack);
-        DEBUG_LOG("  - isObjectChildrenBlack: {}", object->m_isColorSpriteBlack);
         DEBUG_LOG("  - isObjectChildrenBlack: {}", object->m_isColorSpriteBlack);
         DEBUG_LOG("  - blackChildOpacity: {}", object->m_blackChildOpacity);
         DEBUG_LOG("  - blackChildOpacityLocked: {}", object->m_blackChildOpacityLocked);
@@ -146,6 +147,8 @@ bool Renderer::init(PlayLayer* layer, CCArray* levelObjects) {
         sorter.addGameObject(object);
     }
 
+    DEBUG_LOG("m_lightBGColor: {}", layer->m_lightBGColor);
+
     for (auto it = sorter.iterator(); !it.isEnd(); it.next())
         objects.push_back(it.get());
 
@@ -153,7 +156,7 @@ bool Renderer::init(PlayLayer* layer, CCArray* levelObjects) {
 
     renderedGameObjectCount = objects.size();
     
-    generateStaticRenderingBuffer(objects);
+    generateObjectInfoBuffer(objects);
 
     u32 groupCombCount = groupManager.getGroupCombinationCount();
     log::info("{} group combinations detected", groupCombCount);
@@ -323,7 +326,7 @@ void Renderer::prepareColorChannelBuffer() {
     colorChannelBufferObject->flush(0, colorChannelBufferObject->getSize());
 }
 
-void Renderer::generateStaticRenderingBuffer(std::vector<GameObject*>& objects) {
+void Renderer::generateObjectInfoBuffer(std::vector<GameObject*>& objects) {
     std::vector<ObjectInfo> objectInfos;
     objectInfos.resize(renderedGameObjectCount);
 
@@ -365,12 +368,20 @@ void Renderer::generateStaticRenderingBuffer(std::vector<GameObject*>& objects) 
         }
 
         float opacity = (object->m_opacityMod2 > 0.0) ? object->m_opacityMod2 : 1.0;
+        float glowOpacity = object->m_opacityMod;
         float blackChildOpacity = 1.0f;
 
         if (object->m_hasCustomChild && !object->m_blackChildOpacityLocked && object->m_blackChildOpacity > 0.0f)
             blackChildOpacity = object->m_blackChildOpacity;
 
-        objectInfo->opacityValues = glm::packUnorm4x8({opacity, blackChildOpacity, 0, 0});
+        objectInfo->opacityValues = glm::packUnorm4x8({opacity, blackChildOpacity, glowOpacity, 0});
+
+        if (object->m_cantColorGlow && object->m_glowSprite) {
+            auto color = object->m_glowSprite->getColor();
+
+            objectInfo->flags |= OBJECT_FLAG_HAS_STATIC_GLOW_COLOR;
+            objectInfo->staticGlowColor = {color.r, color.g, color.b, 255};
+        }
 
         if (object->m_isInvisibleBlock) objectInfo->flags |= OBJECT_FLAG_IS_INVISIBLE_BLOCK;
         if (object->m_customGlowColor)  objectInfo->flags |= OBJECT_FLAG_SPECIAL_GLOW_COLOR;

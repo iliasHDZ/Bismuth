@@ -39,7 +39,7 @@ private:
 
     void prepareColorChannelBuffer();
 
-    void generateStaticRenderingBuffer(std::vector<GameObject*>& objects);
+    void generateObjectInfoBuffer(std::vector<GameObject*>& objects);
 
     void draw() override;
 

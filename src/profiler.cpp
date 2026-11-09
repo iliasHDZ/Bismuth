@@ -41,7 +41,7 @@ class $modify(MyCCDisplayLinkDirector, cocos2d::CCDisplayLinkDirector) {
 
         if (takeSnapshotNextFrame) {
             isTakingSnapshot = true;
-            profiler::isTakingGPUTime = Renderer::get() != nullptr;
+            profiler::isTakingGPUTime = false;//Renderer::get() != nullptr;
             takeSnapshotNextFrame = false;
             timeSpentInFunction.clear();
             if (!profiler::isTakingGPUTime)
@@ -163,8 +163,8 @@ _PROFILER_HOOK_VOID(cocos2d::CCEGLView, swapBuffers);
 #include <Geode/modify/PlayLayer.hpp>
 _PROFILER_HOOK_VOID(PlayLayer, updateVisibility, float);
 
-#include <Geode/modify/CCSpriteBatchNode.hpp>
-// _PROFILER_HOOK_VOID(cocos2d::CCSpriteBatchNode, draw);
+#include <Geode/modify/CCNode.hpp>
+// _PROFILER_HOOK_VOID(cocos2d::CCNode, visit);
 
 #include <Geode/modify/GJBaseGameLayer.hpp>
 _PROFILER_HOOK_VOID(GJBaseGameLayer, update, float);

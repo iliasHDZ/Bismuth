@@ -94,8 +94,20 @@ void processSprite(uint preCulledSpriteIndex) {
     } else
         color = getColorChannelColor(colorChannel);
 
-    if (spriteType == SPRITE_TYPE_GLOW && (objectFlags & OBJECT_FLAG_SPECIAL_GLOW_COLOR) != 0)
-        color = vec4(u_specialLightBGColor, 1.0);
+    vec4 opacityValues = unpackUnorm4x8(object.opacityValues);
+
+    float opacity           = opacityValues.x;
+    float blackChildOpacity = opacityValues.y;
+    float glowOpacity       = opacityValues.z;
+
+    if (spriteType == SPRITE_TYPE_GLOW) {
+        if ((objectFlags & OBJECT_FLAG_HAS_STATIC_GLOW_COLOR) != 0)
+            color = unpackUnorm4x8(object.staticGlowColor);
+        else if ((objectFlags & OBJECT_FLAG_SPECIAL_GLOW_COLOR) != 0)
+            color = vec4(u_specialLightBGColor, 1.0);
+
+        color.a *= glowOpacity;
+    }
 
     if (state.pulseIndex != 0 && (spriteType == SPRITE_TYPE_BASE || spriteType == SPRITE_TYPE_DETAIL))
         color = vec4(applyPulseEntries(color.rgb, state.pulseIndex, spriteType == SPRITE_TYPE_BASE), color.a);
@@ -111,11 +123,6 @@ void processSprite(uint preCulledSpriteIndex) {
 
     if (spriteType == SPRITE_TYPE_BLACK || spriteType == SPRITE_TYPE_BLACK_CHILD)
         color.rgb = vec3(0, 0, 0);
-
-    vec4 opacityValues = unpackUnorm4x8(object.opacityValues);
-
-    float opacity           = opacityValues.x;
-    float blackChildOpacity = opacityValues.y;
 
     color.a *= state.opacity * opacity;
     color.rgb *= color.a;
