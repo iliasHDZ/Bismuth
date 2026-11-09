@@ -25,8 +25,10 @@ private:
 static OverdrawView* instance = nullptr;
 
 OverdrawView::~OverdrawView() {
-    preDrawNode->release();
-    label->retain();
+    if (preDrawNode)
+        preDrawNode->release();
+    if (label)
+        label->retain();
     instance = nullptr;
 }
 

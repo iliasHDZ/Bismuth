@@ -10,7 +10,7 @@ and visibility calculations on the GPU. Bismuth completely
 replaces and recreates GD's object rendering from scratch.
 
 Bismuth is **especially** effective with high object counts
-and exessive move/rotate trigger logic.
+and excessive move/rotate trigger logic.
 
 Currently, this mod renders 2.1 levels best. Newer 2.2
 features and visual quirks haven't been implemented yet.
