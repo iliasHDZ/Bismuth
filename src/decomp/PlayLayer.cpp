@@ -289,11 +289,12 @@ void decomp_PlayLayer::virtual_updateVisibility(float delta) {
         CCSize winSize = CCDirector::sharedDirector()->getWinSize();
         CCPoint objectPos = object->getPosition();
 
-        float newObjectX = winSize.width / m_gameState.m_cameraZoom
-                            - (objectPos.x - m_gameState.m_cameraPosition.x) * 2.0
-                            + flip * objectPos.x;
+        float   zoom   = m_gameState.m_cameraZoom;
+        CCPoint camPos = m_gameState.m_cameraPosition;
+
+        float newObjectX = objectPos.x + (winSize.width / zoom - 2.0 * (objectPos.x - camPos.x)) * flip;
         
-        object->setPosition(CCPoint(newObjectX, objectPos.x));
+        object->setPosition(CCPoint(newObjectX, objectPos.y));
 
         float rotation = abs(object->getRotation());
 
@@ -331,6 +332,9 @@ void decomp_PlayLayer::virtual_updateVisibility(float delta) {
 
     m_resetActiveObjects = false;
     m_blendingColors.clear(); // This might be wrong, idk. But it makes sense to me.
+    
+    if (shouldDebugDraw())
+        updateDebugDraw();
 }
     
 void decomp_PlayLayer::optimized_updateVisibility(float delta) {
@@ -368,6 +372,6 @@ void decomp_PlayLayer::optimized_updateVisibility(float delta) {
             }
         }
 
-        this->updateDebugDraw();
+        updateDebugDraw();
     }
 }
