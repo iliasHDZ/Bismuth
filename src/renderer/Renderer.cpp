@@ -226,7 +226,7 @@ bool Renderer::init(PlayLayer* layer, CCArray* levelObjects) {
         )->show();
     }
 
-    setID("bismuth-renderer");
+    setID("iliashdz.bismuth/renderer");
 
     log::info("Renderer initialized");
     return true;

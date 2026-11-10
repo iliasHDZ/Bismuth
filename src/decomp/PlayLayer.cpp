@@ -334,7 +334,8 @@ void decomp_PlayLayer::virtual_updateVisibility(float delta) {
 }
     
 void decomp_PlayLayer::optimized_updateVisibility(float delta) {
-    // preUpdateVisibility(delta);
+    if (shouldDebugDraw())
+        preUpdateVisibility(delta);
     m_effectManager->processColors();
     m_effectManager->calculateLightBGColor(m_effectManager->activeColorForIndex(COLOR_P1));
 
@@ -357,4 +358,16 @@ void decomp_PlayLayer::optimized_updateVisibility(float delta) {
 
     if (m_endPortal)
         m_endPortal->activateObject();
+
+    if (shouldDebugDraw()) {
+        for (int index = 0; index < m_activeObjectsCount; index++) {
+            GameObject* object = m_activeObjects[index];
+            if (object->m_objectType != GameObjectType::Decoration) {
+                object->activateObject();
+                object->setOpacity(0);
+            }
+        }
+
+        this->updateDebugDraw();
+    }
 }
