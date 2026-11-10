@@ -5,7 +5,7 @@ for maximum performance.
 
 Currently experimental
 
-You can try the latest builds from the discord server: https://discord.gg/mTyy8BTyS
+You can try the latest builds from the discord server: https://discord.gg/MDbQt3w8HC
 
 <img src="logo.png" alt="Bismuth logo" width="100"/>
 
