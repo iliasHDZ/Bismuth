@@ -397,7 +397,10 @@ void Renderer::generateObjectInfoBuffer(std::vector<GameObject*>& objects) {
         if (object->m_objectType == GameObjectType::Solid)
             objectInfo->flags |= OBJECT_FLAG_IS_STATIC_OBJECT;
         objectInfo->fadeMargin = object->m_fadeMargin;
-
+        
+        auto content = object->getContentSize();
+        objectInfo->contentSize = glm::vec2 { content.width, content.height };
+        
         objectIndicies[object] = index;
         index++;
     }

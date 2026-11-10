@@ -24,6 +24,7 @@ uint objectFlags;
 uint objectIndex;
 uint spriteType;
 vec2 objectPosition;
+vec2 objectContentSize;
 vec2 vertexOffset;
 uint culledIndexBufferOutputIndex = 0;
 
@@ -42,15 +43,16 @@ void processSprite(uint preCulledSpriteIndex) {
 
     objectPosition = state.positionalTransform * startPosition + state.offset;
 
-    if (!isObjectOnScreen())
-        return;
-
     uint spriteIndex = u_spriteRemapIndicies[preCulledSpriteIndex];
 
     InputSprite sprite = u_inputSprites[spriteIndex];
     objectIndex = sprite.objectIndex;
     
     ObjectInfo object = u_objects[sprite.objectIndex];
+    objectContentSize = object.contentSize;
+
+    if (!isObjectOnScreen())
+        return;
 
     objectFlags = object.flags;
 
@@ -168,12 +170,13 @@ bool isObjectOnScreen() {
 
     vec2 screenPos = vec2(dot(u_cameraRight, offset), dot(u_cameraUp, offset));
 
-    const float threshold = 100.0;
+    const float padding = 5.0;
+    const vec2 threshold = objectContentSize * 2 + padding;
 
-    return screenPos.x >= -threshold &&
-           screenPos.x <= u_cameraSize.x + threshold &&
-           screenPos.y >= -threshold &&
-           screenPos.y <= u_cameraSize.y + threshold;
+    return screenPos.x >= -threshold.x &&
+           screenPos.x <= u_cameraSize.x + threshold.x &&
+           screenPos.y >= -threshold.y &&
+           screenPos.y <= u_cameraSize.y + threshold.y;
 }
 
 float calculateAudioScale() {

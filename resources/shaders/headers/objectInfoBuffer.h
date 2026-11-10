@@ -27,6 +27,7 @@ struct ObjectInfo {
     uint detailColorChannelId;
     PackedHSV detailHSV;
     RGBA staticGlowColor;
+    vec2 contentSize;
 };
 
 /*
