@@ -15,6 +15,12 @@ UNIFORM_BUFFER(GAME_STATE_BUFFER_BINDING) GameStateBuffer {
     vec2  u_cameraUp;
     vec2  u_cameraSize;
 
+    // Used for mirror portal effect
+    float u_gameStateCameraPositionX;
+    float u_gameStateCameraZoom;
+    float u_winSizeWidth;
+    float u_levelFlipProgress;
+
     // Used for invisible block calculation
     vec2  u_winSize;
     float u_screenRight;

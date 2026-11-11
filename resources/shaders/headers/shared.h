@@ -84,10 +84,10 @@ mat2 rotationMatrix(float angleInRadians) {
     );
 }
 
-mat2 scaleMatrix(float scale) {
+mat2 scaleMatrix(vec2 scale) {
     return mat2(
-        scale, 0,
-        0, scale
+        scale.x, 0,
+        0, scale.y
     );
 }
 

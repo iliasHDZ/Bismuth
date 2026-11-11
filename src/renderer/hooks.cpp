@@ -163,7 +163,7 @@ class $modify(RendererGJBaseGameLayer, GJBaseGameLayer) {
 
         auto eman = m_effectManager;
         for (auto cmdObj : eman->m_unkVector5b0) {
-            if (/* cmdObj->m_unkInt204 != m_gameState.m_unkUint2 ||*/ cmdObj->m_someInterpValue1RelatedFalse)
+            if (cmdObj->m_someInterpValue1RelatedFalse)
                 continue;
 
             i32 targetId = cmdObj->m_targetGroupID;
@@ -231,8 +231,8 @@ class $modify(RendererGJBaseGameLayer, GJBaseGameLayer) {
 
             double moveX = 0.0, moveY = 0.0;
             if (mainObject->m_unk4C4 == m_gameState.m_commandIndex) {
-                moveX = (mainObject->m_positionX - mainObject->m_lastPosition.x) * node->m_unk080; /* followXMod */
-                moveY = (mainObject->m_positionY - mainObject->m_lastPosition.y) * node->m_unk088; /* followYMod */
+                moveX = (mainObject->m_positionX - mainObject->m_lastPosition.x) * node->m_unk080; // followXMod
+                moveY = (mainObject->m_positionY - mainObject->m_lastPosition.y) * node->m_unk088; // followYMod
             }
 
             renderer->getGroupManager().moveGroup(targetGroupId, moveX, moveY);

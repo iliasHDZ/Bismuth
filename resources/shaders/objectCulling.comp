@@ -64,7 +64,17 @@ void processSprite(uint preCulledSpriteIndex) {
         objectLocalTransform = rotationMatrix(-object.rotationSpeed * u_timer / 180 * PI) * objectLocalTransform;
 
     if ((objectFlags & OBJECT_FLAG_USES_AUDIO_SCALE) != 0)
-        objectLocalTransform = scaleMatrix(calculateAudioScale()) * objectLocalTransform;
+        objectLocalTransform = scaleMatrix(vec2(calculateAudioScale())) * objectLocalTransform;
+
+    if (u_levelFlipProgress != 0.0 && u_levelFlipProgress != 1.0) {
+        objectPosition.x += ((u_winSizeWidth / u_gameStateCameraZoom) - ((objectPosition.x - u_gameStateCameraPositionX) + (objectPosition.x - u_gameStateCameraPositionX))) * u_levelFlipProgress;
+
+        // FIXME: Make sure its same condition as 'pastSecondHalf' in https://github.com/StarryDawn72/open-source-gd-project/blob/main/versions/2.2091/PlayLayer/screenFlipObject.cpp
+        if (u_levelFlipProgress >= 0.5)
+            objectLocalTransform = scaleMatrix(vec2(-1, 1)) * objectLocalTransform;
+
+        // objectLocalTransform = scaleMatrix(vec2((1 - u_levelFlipProgress) * 2 - 1, 1)) * objectLocalTransform;
+    }
 
     //// CALCULATE OBJECT COLOR ////
     uint colorChannel;
@@ -94,6 +104,9 @@ void processSprite(uint preCulledSpriteIndex) {
     } else
         color = getColorChannelColor(colorChannel);
 
+    if (state.pulseIndex != 0)
+        color = vec4(applyPulseEntries(color.rgb, state.pulseIndex, spriteType != SPRITE_TYPE_DETAIL), color.a);
+
     vec4 opacityValues = unpackUnorm4x8(object.opacityValues);
 
     float opacity           = opacityValues.x;
@@ -108,9 +121,6 @@ void processSprite(uint preCulledSpriteIndex) {
 
         color.a *= glowOpacity;
     }
-
-    if (state.pulseIndex != 0 && (spriteType == SPRITE_TYPE_BASE || spriteType == SPRITE_TYPE_DETAIL))
-        color = vec4(applyPulseEntries(color.rgb, state.pulseIndex, spriteType == SPRITE_TYPE_BASE), color.a);
 
     if (spriteType == SPRITE_TYPE_BASE && (objectFlags & OBJECT_FLAG_HAS_BASE_HSV) != 0) {
         color = applyHSV(object.baseHSV, color);

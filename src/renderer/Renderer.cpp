@@ -297,6 +297,16 @@ void Renderer::prepareShaderUniforms() {
 
     gameState.u_cameraSize = glm::vec2 { glm::length(cameraRight), glm::length(cameraUp) };
 
+    float flipProgress = layer->m_gameState.m_levelFlipProgress;
+
+    if (layer->m_cameraFlip == -1.0f)
+        flipProgress = 1.0f - flipProgress;
+
+    gameState.u_gameStateCameraPositionX = layer->m_gameState.m_cameraPosition.x;
+    gameState.u_gameStateCameraZoom = layer->m_gameState.m_cameraZoom;
+    gameState.u_winSizeWidth = CCDirector::get()->getWinSize().width;
+    gameState.u_levelFlipProgress = flipProgress;
+    
     gameState.u_gameStateFlags = 0;
     if (layer->m_player1->m_isDead)
         gameState.u_gameStateFlags |= GAME_STATE_IS_PLAYER_DEAD;
