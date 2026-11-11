@@ -49,12 +49,17 @@
 			"default": false,
 			"description": "Allows you to enable and disable Bismuth while playing by pressing F8. It also allows you to use Difference Mode by pressing F9 (Difference Mode is very unstable).\n\n WARNING: This option effectively removes any optimization."
 		},
-		
 		"use_mapped_buffers": {
 			"name": "Use persistently mapped buffers",
 			"type": "bool",
 			"default": false,
 			"description": "May work well with integrated GPU, not so much with discrete GPUs (like a graphics card)"
+		},
+		"disable_object_pulse": {
+			"name": "Disable object pulse",
+			"type": "bool",
+			"default": false,
+			"description": "Disables the pulsing of objects that pulse to the song"
 		}
 	}
 }

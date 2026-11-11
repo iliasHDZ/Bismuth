@@ -71,6 +71,7 @@ bool Renderer::init(PlayLayer* layer, CCArray* levelObjects) {
         return false;
 
     debugToolsEnabled = Mod::get()->getSettingValue<bool>("debug_tools");
+    disableObjectPulse = Mod::get()->getSettingValue<bool>("disable_object_pulse");
 
     log::info("OpenGL Version: {}", (const char*)glGetString(GL_VERSION));
 
@@ -306,18 +307,22 @@ void Renderer::prepareShaderUniforms() {
     gameState.u_gameStateCameraZoom = layer->m_gameState.m_cameraZoom;
     gameState.u_winSizeWidth = CCDirector::get()->getWinSize().width;
     gameState.u_levelFlipProgress = flipProgress;
-    
+
     gameState.u_gameStateFlags = 0;
     if (layer->m_player1->m_isDead)
         gameState.u_gameStateFlags |= GAME_STATE_IS_PLAYER_DEAD;
 
-    if (layer->m_skipAudioStep)
-        gameState.u_audioScale = FMODAudioEngine::sharedEngine()->getMeteringValue();
-    else
-        gameState.u_audioScale = layer->m_audioEffectsLayer->m_audioScale;
-    
-    if (layer->m_isSilent || (layer->m_isPracticeMode && !layer->m_practiceMusicSync))
-        gameState.u_audioScale = 0.5;
+    if (disableObjectPulse)
+        gameState.u_audioScale = 1.0;
+    else {
+        if (layer->m_skipAudioStep)
+            gameState.u_audioScale = FMODAudioEngine::sharedEngine()->getMeteringValue();
+        else
+            gameState.u_audioScale = layer->m_audioEffectsLayer->m_audioScale;
+        
+        if (layer->m_isSilent || (layer->m_isPracticeMode && !layer->m_practiceMusicSync))
+            gameState.u_audioScale = 0.5;
+    }
 
     gameStateBuffer->write(&gameState, sizeof(gameState));
 }

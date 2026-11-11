@@ -135,6 +135,7 @@ private:
     bool enabled = false;
     bool debugTextEnabled = false;
     bool debugToolsEnabled = false;
+    bool disableObjectPulse = false;
 
     u64 rendererStartTime = 0;
 
