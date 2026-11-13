@@ -3,9 +3,13 @@
 using namespace geode::prelude;
 
 Buffer::~Buffer() {
-    glDeleteBuffers(1, &id);
-    if (mappedData)
+    if (shouldMap) {
+        bindAs(GL_ARRAY_BUFFER);
+        glUnmapBuffer(GL_ARRAY_BUFFER);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+    } else
         delete[] mappedData;
+    glDeleteBuffers(1, &id);
 }
 
 void Buffer::read(void* data, usize size, usize offset) {

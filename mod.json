@@ -53,7 +53,7 @@
 			"name": "Use persistently mapped buffers",
 			"type": "bool",
 			"default": false,
-			"description": "May work well with integrated GPU, not so much with discrete GPUs (like a graphics card)"
+			"description": "!!!! WARNING: VERY BUGGY !!!!\n\nMay work well with integrated GPU, not so much with discrete GPUs (like a graphics card)"
 		},
 		"disable_object_pulse": {
 			"name": "Disable object pulse",

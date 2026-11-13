@@ -110,8 +110,14 @@ bool Renderer::init(PlayLayer* layer, CCArray* levelObjects) {
             continue;
         }
 
-        if (object->isTrigger() || object->m_isHide || object->m_objectID == GUIDE_OBJECT_ID)
+        if (
+            object->isTrigger() ||
+            object->m_isHide ||
+            object->m_objectID == GUIDE_OBJECT_ID ||
+            object->m_objectID == KEYFRAME_OBJECT_ID
+        ) {
             continue;
+        }
 
         if (object == layer->m_endPortal)
             continue;
@@ -365,7 +371,7 @@ void Renderer::generateObjectInfoBuffer(std::vector<GameObject*>& objects) {
             objectInfo->rotationSpeed = 0.0;
 
         objectInfo->flags = 0;
-        if (object->m_usesAudioScale) {
+        if (object->m_usesAudioScale && !object->m_hasNoAudioScale) {
             objectInfo->flags |= OBJECT_FLAG_USES_AUDIO_SCALE;
         
             if (object->m_customAudioScale) {

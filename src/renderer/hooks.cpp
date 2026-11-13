@@ -142,11 +142,34 @@ class $modify(RendererGJBaseGameLayer, GJBaseGameLayer) {
 
             renderer->getGroupManager().moveGroup(groupId, node->m_unk038, node->m_unk040);
 
-            CCArray* objects = getStaticGroup(groupId);
-            if (objects)
-                moveObjects(objects, node->m_unk038, node->m_unk040, 0);
+            if (renderer->useOptimizations()) {
+                auto objects = renderer->getGroupManager().getVanillaRotateGroup(groupId);
 
-            if (!renderer->useOptimizations()) {
+                float moveX = node->m_unk038;
+                float moveY = node->m_unk040;
+
+                for (auto object : objects) {
+                    if (!object->m_isDecoration2 && object->m_unk4C4 != m_gameState.m_commandIndex) {
+                        object->m_unk4C4 = m_gameState.m_commandIndex;
+
+                        object->m_lastPosition.x = object->m_positionX;
+                        object->m_lastPosition.y = object->m_positionY;
+                        object->dirtifyObjectRect();
+                    }
+
+                    if (moveX != 0.0 && !object->m_tempOffsetXRelated)
+                        object->m_positionX += moveX;
+                    if (moveY != 0.0)
+                        object->m_positionY += moveY;
+                        
+                    object->dirtifyObjectPos();
+                    updateObjectSection(object);
+                }
+            } else {
+                CCArray* objects = getStaticGroup(groupId);
+                if (objects)
+                    moveObjects(objects, node->m_unk038, node->m_unk040, 0);
+
                 objects = getOptimizedGroup(groupId);
                 if (objects)
                     moveObjects(objects, node->m_unk090, node->m_unk098, 0);
