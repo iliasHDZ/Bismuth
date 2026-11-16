@@ -319,7 +319,7 @@ void Renderer::prepareShaderUniforms() {
         gameState.u_gameStateFlags |= GAME_STATE_IS_PLAYER_DEAD;
 
     if (disableObjectPulse)
-        gameState.u_audioScale = 1.0;
+        gameState.u_audioScale = 0.5;
     else {
         if (layer->m_skipAudioStep)
             gameState.u_audioScale = FMODAudioEngine::sharedEngine()->getMeteringValue();

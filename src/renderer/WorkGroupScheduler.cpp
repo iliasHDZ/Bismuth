@@ -243,6 +243,8 @@ void WorkGroupScheduler::GenerationJob::generateWorkGroupsForLayer(
             inputSpriteIndicies.push_back(sprite->inputSpriteIndex);
             culledIndexBufferOutputIndex += sprite->triCount;
 
+            // log::info("sprite {}", sprite->colorChannelId);
+
             (*preCulledSprites)[currentSpriteIndex].groupCombinationIndex = sprite->groupCombinationIndex;
             (*preCulledSprites)[currentSpriteIndex].startPosition = ccPointToGLM(sprite->object->m_startPosition);
 

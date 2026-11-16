@@ -355,6 +355,14 @@ public:
                 "Ok"
             )->show();
         }
+
+        if (isIntelGPU()) {
+            FLAlertLayer::create(
+                "Bismuth warning!",
+                "Bismuth is unstable and likely very slow on Intel integrated GPUs!\n",
+                "Ok"
+            )->show();
+        }
     }
 
     void onLoad() {
