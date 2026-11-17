@@ -324,8 +324,6 @@ void GroupManager::updateAlphaValues() {
             alphaValuesPerGroupId[id] = 0.0;
     }
 
-    usize idx = groupCombinationIndicies[GroupCombination({890})];
-
     u32* alphaFast = alphaIndexGroupIdFastStructure.data();
     for (u32 alphaIndex = 0; alphaIndex < alphaIndiciesCount; alphaIndex++) {
         u32 combCount = *(alphaFast++);
