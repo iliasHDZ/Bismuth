@@ -19,6 +19,16 @@ static std::optional<GroupID> getTargetGroupIdOfTransformingTrigger(GameObject* 
     return std::nullopt;
 }
 
+static std::optional<GroupID> getTargetGroupIdOfVisibilityTrigger(GameObject* object) {
+    switch (object->m_objectID) {
+    case ALPHA_TRIGGER_ID:
+    case TOGGLE_TRIGGER_ID:
+    case TOGGLE_ORB_ID:
+        return ((EffectGameObject*)object)->m_targetGroupID;
+    }
+    return std::nullopt;
+}
+
 GroupCombination::GroupCombination(std::array<GroupID, 10>* groupIds, i32 count) {
     i32 i = 0;
     for (; i < count; i++)
@@ -77,12 +87,13 @@ void GroupManager::initWithObjects(cocos2d::CCArray* objects) {
     GroupCombinationIndex groupCombIndex = 1;
 
     for (auto object : CCArrayExt<GameObject*>(objects)) {
-        std::optional<GroupID> targetGroupId = getTargetGroupIdOfTransformingTrigger(object);
+        auto transformGroupId = getTargetGroupIdOfTransformingTrigger(object);
+        auto alphaGroupId     = getTargetGroupIdOfVisibilityTrigger(object);
 
-        if (targetGroupId.has_value())
-            transformGroupIds.insert(targetGroupId.value());
-        else if (object->m_objectID == ALPHA_TRIGGER_ID || object->m_objectID == TOGGLE_TRIGGER_ID)
-            alphaGroupIds.insert(((EffectGameObject*)object)->m_targetGroupID);
+        if (transformGroupId)
+            transformGroupIds.insert(transformGroupId.value());
+        else if (alphaGroupId)
+            alphaGroupIds.insert(alphaGroupId.value());
 
         dobjects.insert(object);
         
@@ -312,6 +323,8 @@ void GroupManager::updateAlphaValues() {
         else
             alphaValuesPerGroupId[id] = 0.0;
     }
+
+    usize idx = groupCombinationIndicies[GroupCombination({890})];
 
     u32* alphaFast = alphaIndexGroupIdFastStructure.data();
     for (u32 alphaIndex = 0; alphaIndex < alphaIndiciesCount; alphaIndex++) {
