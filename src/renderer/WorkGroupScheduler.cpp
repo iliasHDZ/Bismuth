@@ -136,16 +136,18 @@ LayerKey WorkGroupScheduler::SpriteEntry::getFullLayerKey(const ColorChannelBlen
     auto isColorChannelBlending      = blendingStates[colorChannelId];
     auto isOtherColorChannelBlending = blendingStates[otherColorChannelId];
 
-    if (
-        type == SpriteType::BASE &&
-        hasDetailSprite &&
-        isColorChannelBlending &&
-        !isOtherColorChannelBlending &&
-        !isDetailSpriteInFront
-    ) {
-        zLayerOut = (ZLayer)((int)zLayerOut + 1);
-    } else if (type == SpriteType::DETAIL && isColorChannelBlending && isDetailSpriteInFront) {
-        zLayerOut = (ZLayer)((int)zLayerOut + 1);
+    if (spriteSheet != SpriteSheet::PARTICLE) {
+        if (
+            type == SpriteType::BASE &&
+            hasDetailSprite &&
+            isColorChannelBlending &&
+            !isOtherColorChannelBlending &&
+            !isDetailSpriteInFront
+        ) {
+            zLayerOut = (ZLayer)((int)zLayerOut + 1);
+        } else if (type == SpriteType::DETAIL && isColorChannelBlending && isDetailSpriteInFront) {
+            zLayerOut = (ZLayer)((int)zLayerOut + 1);
+        }
     }
 
     return { zLayerOut, spriteSheet, isColorChannelBlending };

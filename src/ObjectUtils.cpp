@@ -3,10 +3,6 @@
 
 using namespace geode::prelude;
 
-constexpr ZLayer getSuperLayer(ZLayer zLayer) {
-    return (ZLayer)((int)zLayer + 1);
-}
-
 const char* zLayerAsString(ZLayer zLayer) {
     switch (zLayer) {
     case ZLayer::B5:      return "b5";

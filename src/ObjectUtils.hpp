@@ -37,6 +37,15 @@ const char* spriteSheetAsString(SpriteSheet spriteSheet);
 
 const char* spriteTypeAsString(SpriteType type);
 
+constexpr ZLayer getSuperLayer(ZLayer zLayer) {
+    return (ZLayer)((int)zLayer + 1);
+}
+
+constexpr bool isSuperLayer(ZLayer zlayer) {
+    int num = (int)zlayer;
+    return num % 2 == 0 && num >= -4 && num <= 12;
+}
+
 template <>
 class fmt::formatter<ZLayer> {
 public:

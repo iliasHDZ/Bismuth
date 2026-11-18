@@ -245,12 +245,17 @@ void Renderer::generateBatchNodes() {
         batchNode->setID(id.asID());
 
         if (!batchNode) continue;
+
+        if (id.spriteSheet == SpriteSheet::PARTICLE && isSuperLayer(id.zlayer))
+            continue;
         
         auto node = getSpriteBatchNodeWithLayerId(id);
 
         if (!node) continue;
 
         vanillaBatchNodes.insert(node);
+
+        int zorder = node->getZOrder();
 
         layer->m_objectLayer->addChild(batchNode, node->getZOrder());
         batchNodes.push_back(batchNode);
