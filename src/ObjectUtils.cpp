@@ -3,6 +3,10 @@
 
 using namespace geode::prelude;
 
+constexpr ZLayer getSuperLayer(ZLayer zLayer) {
+    return (ZLayer)((int)zLayer + 1);
+}
+
 const char* zLayerAsString(ZLayer zLayer) {
     switch (zLayer) {
     case ZLayer::B5:      return "b5";
@@ -11,11 +15,20 @@ const char* zLayerAsString(ZLayer zLayer) {
     case ZLayer::B2:      return "b2";
     case ZLayer::B1:      return "b1";
     default:
-    case ZLayer::Default: return "default";
     case ZLayer::T1:      return "t1";
     case ZLayer::T2:      return "t2";
     case ZLayer::T3:      return "t3";
     case ZLayer::T4:      return "t4";
+
+    case getSuperLayer(ZLayer::B5): return "super-b5";
+    case getSuperLayer(ZLayer::B4): return "super-b4";
+    case getSuperLayer(ZLayer::B3): return "super-b3";
+    case getSuperLayer(ZLayer::B2): return "super-b2";
+    case getSuperLayer(ZLayer::B1): return "super-b1";
+    case getSuperLayer(ZLayer::T1): return "super-t1";
+    case getSuperLayer(ZLayer::T2): return "super-t2";
+    case getSuperLayer(ZLayer::T3): return "super-t3";
+    case getSuperLayer(ZLayer::T4): return "super-t4";
     }
 }
 
@@ -142,7 +155,15 @@ void ObjectUtils::unpackSpriteRecursively(
     ReceiveUnpackedSpriteFunc func,
     SpriteType type
 ) {
+    float savedRotX = object->getRotationX();
+    float savedRotY = object->getRotationY();
+    object->setRotationX(object->m_startRotationX);
+    object->setRotationY(object->m_startRotationY);
+
     transform = CCAffineTransformConcat(sprite->nodeToParentTransform(), transform);
+    
+    object->setRotationX(savedRotX);
+    object->setRotationY(savedRotY);
 
     bool isSpriteBlack = false;
 

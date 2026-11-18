@@ -178,6 +178,9 @@ void ObjectBatch::addSprite(
     usedLayerKeys.insert({zLayer, spriteSheet, false});
     usedLayerKeys.insert({zLayer, spriteSheet, true});
 
+    usedLayerKeys.insert({(ZLayer)((int)zLayer + 1), spriteSheet, false});
+    usedLayerKeys.insert({(ZLayer)((int)zLayer + 1), spriteSheet, true});
+
     workGroupScheduler.addSprite(object, sprite, type, currentSpriteIndex, trianglesCount);
 }
 

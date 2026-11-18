@@ -71,7 +71,11 @@ private:
         u32 entryIndex;
         ZLayer zLayer;
         SpriteSheet spriteSheet;
+        SpriteType type;
+        bool isDetailSpriteInFront;
+        bool hasDetailSprite;
         u16 colorChannelId;
+        u16 otherColorChannelId;
         u32 inputSpriteIndex;
         u32 triCount;
         u32 groupCombinationIndex;

@@ -73,7 +73,11 @@ void WorkGroupScheduler::addSprite(
         .entryIndex = (u32)spriteEntries.size(),
         .zLayer = object->getObjectZLayer(),
         .spriteSheet = ObjectUtils::getSpritesheetOfObject(object, type),
+        .type = type,
+        .isDetailSpriteInFront = object->m_colorZLayerRelated,
+        .hasDetailSprite = !!object->m_colorSprite,
         .colorChannelId = (u16)ObjectUtils::getSpriteColorChannel(type, object, sprite),
+        .otherColorChannelId = (type == SpriteType::BASE) ? (u16)object->m_activeDetailColorID : (u16)object->m_activeMainColorID,
         .inputSpriteIndex = inputSpriteIndex,
         .triCount = triCount,
         .groupCombinationIndex = Renderer::get()->getGroupManager().getGroupCombinationIndexForObject(object),
@@ -127,7 +131,24 @@ void WorkGroupScheduler::addGenerationJob(const ColorChannelBlendStates& blendSt
 }
 
 LayerKey WorkGroupScheduler::SpriteEntry::getFullLayerKey(const ColorChannelBlendStates& blendingStates) const {
-    return { zLayer, spriteSheet, blendingStates[colorChannelId] };
+    auto zLayerOut = zLayer;
+
+    auto isColorChannelBlending      = blendingStates[colorChannelId];
+    auto isOtherColorChannelBlending = blendingStates[otherColorChannelId];
+
+    if (
+        type == SpriteType::BASE &&
+        hasDetailSprite &&
+        isColorChannelBlending &&
+        !isOtherColorChannelBlending &&
+        !isDetailSpriteInFront
+    ) {
+        zLayerOut = (ZLayer)((int)zLayerOut + 1);
+    } else if (type == SpriteType::DETAIL && isColorChannelBlending && isDetailSpriteInFront) {
+        zLayerOut = (ZLayer)((int)zLayerOut + 1);
+    }
+
+    return { zLayerOut, spriteSheet, isColorChannelBlending };
 }
 
 void WorkGroupScheduler::GenerationJob::generateSortedBatchForBlendStates() {
