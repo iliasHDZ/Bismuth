@@ -244,17 +244,16 @@ void Renderer::generateBatchNodes() {
         auto batchNode = ObjectBatchNode::create(id);
         batchNode->setID(id.asID());
 
-        if (batchNode) {
-            auto node = getSpriteBatchNodeWithLayerId(id);
+        if (!batchNode) continue;
+        
+        auto node = getSpriteBatchNodeWithLayerId(id);
 
-            if (!node)
-                continue;
+        if (!node) continue;
 
-            vanillaBatchNodes.insert(node);
+        vanillaBatchNodes.insert(node);
 
-            layer->m_objectLayer->addChild(batchNode, node->getZOrder());
-            batchNodes.push_back(batchNode);
-        }
+        layer->m_objectLayer->addChild(batchNode, node->getZOrder());
+        batchNodes.push_back(batchNode);
     }
 
     for (auto node : CCArrayExt<CCNode*, false>(layer->m_batchNodes)) {
