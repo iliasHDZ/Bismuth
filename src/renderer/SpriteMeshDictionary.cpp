@@ -42,9 +42,9 @@ ConvexList* SpriteMeshDictionary::getSpriteMeshForSprite(cocos2d::CCSprite* spri
 
 static std::optional<ConvexList> parseConvexList(const matjson::Value& array);
 
-static fs::path lastLoadedFilePath = "";
+static asp::fs::Path lastLoadedFilePath = "";
 
-void SpriteMeshDictionary::loadFromFile(const fs::path& path) {
+void SpriteMeshDictionary::loadFromFile(const asp::fs::Path& path) {
     if (lastLoadedFilePath == path)
         return;
     lastLoadedFilePath = path;

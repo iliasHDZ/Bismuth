@@ -1,7 +1,7 @@
 {
-	"geode": "5.10.1",
+	"geode": "6.0.0-beta.1",
 	"gd": {
-		"win": "2.2081"
+		"win": "2.2091"
 	},
 	"id": "iliashdz.bismuth",
 	"name": "Bismuth (experimental)",
@@ -47,7 +47,7 @@
 			"name": "Enable debug tools",
 			"type": "bool",
 			"default": false,
-			"description": "Allows you to enable and disable Bismuth while playing by pressing F8. It also allows you to use Difference Mode by pressing F9 (Difference Mode is very unstable).\n\n WARNING: This option effectively removes any optimization."
+			"description": "Allows you to enable and disable Bismuth while playing by pressing F8. It also allows you to use Difference Mode by pressing F9 (Difference Mode is very unstable).\nPressing F7 in the editor selects all objects right of the screen.\n\n WARNING: This option effectively removes any optimization."
 		},
 		"use_mapped_buffers": {
 			"name": "Use persistently mapped buffers",

@@ -108,7 +108,7 @@ void glObjectLabel(GLenum id, GLuint name, GLsizei length, const char* label);
 */
 void drawFullscreenQuad();
 
-std::optional<std::string> readResourceFile(const fs::path& path);
+std::optional<std::string> readResourceFile(const asp::fs::Path& path);
 
 inline glm::vec2 getClockwise(const glm::vec2& v) {
     return { v.y, -v.x };

@@ -4,6 +4,7 @@
 #include <decomp/GJBaseGameLayer.hpp>
 #include "../cl.hpp"
 #include "OverdrawView.hpp"
+#include "../HotKey.hpp"
 
 using namespace geode::prelude;
 
@@ -17,8 +18,8 @@ class $modify(MyPlayLayer, PlayLayer) {
         newPlayLayer = false;
     }
 
-    bool init(GJGameLevel *level, bool useReplay, bool dontCreateObjects) {
-        bool ret = PlayLayer::init(level, useReplay, dontCreateObjects);
+    bool init(GJGameLevel *level, bool dontCreateObjects) {
+        bool ret = PlayLayer::init(level, dontCreateObjects);
         if (ret) {
             auto view = OverdrawView::create();
             if (view) {
@@ -411,3 +412,41 @@ class $modify(MyLevelEditorLayer, LevelEditorLayer) {
         return ret;
     }
 };
+
+DECLARE_HOTKEY(KEY_F7, {
+    if (!Mod::get()->getSettingValue<bool>("debug_tools"))
+        return;
+
+    auto editor = GameManager::get()->m_levelEditorLayer;
+    if (!editor)
+        return;
+
+    float posX = editor->m_objectLayer->convertToNodeSpace(CCDirector::get()->getWinSize() / 2).x;
+
+    CCArray* deleteObjects = CCArray::create();
+
+    for (auto obj : CCArrayExt<GameObject*>(editor->m_objects)) {
+        if (obj->m_startPosition.x > posX)
+            deleteObjects->addObject(obj);
+    }
+
+    /*
+    for (auto obj : CCArrayExt<GameObject*>(deleteObjects))
+        editor->m_editorUI->deleteObject(obj, true);
+
+    editor->addToUndoList(UndoObject::createWithArray(deleteObjects, UndoCommand::DeleteMulti), false);
+    */
+
+    editor->m_editorUI->processSelectObjects(deleteObjects);
+    editor->m_editorUI->updateButtons();
+    editor->m_editorUI->deactivateRotationControl();
+    editor->m_editorUI->deactivateScaleControl();
+    editor->m_editorUI->deactivateTransformControl();
+    editor->m_editorUI->updateObjectInfoLabel();
+
+    Notification::create(
+        "Bismuth debug tools: Selected objects right of screen",
+        NotificationIcon::Info,
+        3.0f
+    )->show();
+});

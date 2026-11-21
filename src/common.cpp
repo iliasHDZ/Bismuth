@@ -94,8 +94,8 @@ class $modify(CommonCCDirector, CCDirector) {
     }
 };
 
-std::optional<std::string> readResourceFile(const fs::path& path) {
-    std::ifstream t(Mod::get()->getResourcesDir() / path);
+std::optional<std::string> readResourceFile(const asp::fs::Path& path) {
+    std::ifstream t((Mod::get()->getResourcesDir() / path).string());
     if (!t.is_open())
         return std::nullopt;
 

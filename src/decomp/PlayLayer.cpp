@@ -27,6 +27,7 @@ public:
 #define DYNAMIC_BITSET_SET(D, B) ( (D).m_bits[B >> 5] |= ( 1 << (B & 0x1f) ) )
 
 void decomp_PlayLayer::virtual_updateVisibility(float delta) {
+    /*
     float someValue = m_gameState.m_cameraPosition2.x + m_cameraWidth;
 
     // Windows only
@@ -204,7 +205,7 @@ void decomp_PlayLayer::virtual_updateVisibility(float delta) {
             } else {
                 object->setOpacity(255);
             }
-            */
+            *
             if (
                 object->ignoreFade() || enterEffectType == -14 ||
                 (
@@ -335,6 +336,7 @@ void decomp_PlayLayer::virtual_updateVisibility(float delta) {
     
     if (shouldDebugDraw())
         updateDebugDraw();
+    */
 }
     
 void decomp_PlayLayer::optimized_updateVisibility(float delta) {

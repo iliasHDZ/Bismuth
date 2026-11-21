@@ -115,9 +115,9 @@ void processSprite(uint preCulledSpriteIndex) {
 
     if (spriteType == SPRITE_TYPE_GLOW) {
         if ((objectFlags & OBJECT_FLAG_HAS_STATIC_GLOW_COLOR) != 0)
-            color = unpackUnorm4x8(object.staticGlowColor);
+            color = vec4(unpackUnorm4x8(object.staticGlowColor).rgb, color.a);
         else if ((objectFlags & OBJECT_FLAG_SPECIAL_GLOW_COLOR) != 0)
-            color = vec4(u_specialLightBGColor, 1.0);
+            color = vec4(u_specialLightBGColor, color.a);
 
         color.a *= glowOpacity;
     }
