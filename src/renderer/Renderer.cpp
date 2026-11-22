@@ -510,7 +510,7 @@ void Renderer::update(float dt) {
         updateDebugText();
 
     auto& gstate = layer->m_gameState;
-    cameraCenterPos = ccPointToGLM(gstate.m_cameraPosition + CCPoint(layer->m_cameraWidth * 0.5, layer->m_cameraHeight * 0.5));
+    cameraCenterPos = ccPointToGLM(gstate.m_cameraLastPosition + CCPoint(layer->m_cameraWidth * 0.5, layer->m_cameraHeight * 0.5));
 }
 
 CCSpriteBatchNode* Renderer::getSpriteBatchNodeWithLayerId(LayerKey id) {
