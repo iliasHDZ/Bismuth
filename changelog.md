@@ -1,3 +1,6 @@
+# 1.0.1-alpha
+- Removed warning notification when running with Bismuth disabled
+
 # 1.0.0-alpha
 - Added advanced object culling & processing compute shader
 - Ported to 2.2091
