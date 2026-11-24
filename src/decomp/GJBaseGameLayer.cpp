@@ -198,6 +198,8 @@ void decomp_GJBaseGameLayer::optimized_processRotationActions() {
             gco->m_unkInt204 = m_gameState.m_commandIndex;
     }
 
+    i32 objectsRotated = 0;
+
     for (auto gco : m_effectManager->m_unkVector5b0) {
         if (gco->m_unkInt204 != m_gameState.m_commandIndex)
             continue;
@@ -211,6 +213,8 @@ void decomp_GJBaseGameLayer::optimized_processRotationActions() {
 
         auto objectsToRotate = groupManager.getVanillaRotateGroup(gco->m_targetGroupID);
         // auto objectsToRotateArray = getOptimizedGroup(gco->m_targetGroupID);
+
+        objectsRotated += objectsToRotate.size();
 
         CCArray* staticGroup = getStaticGroup(gco->m_targetGroupID);
 
@@ -342,6 +346,8 @@ void decomp_GJBaseGameLayer::optimized_processRotationActions() {
     m_objectLayer->setScaleX(objLayerScaleX);
     m_objectLayer->setScaleY(objLayerScaleY);
     m_objectLayer->setPosition(objLayerPos);
+
+    Renderer::get()->setDebugTextEntry("Physics objects rotated", std::to_string(objectsRotated));
 }
 
 void decomp_GJBaseGameLayer::processFollowActions() {

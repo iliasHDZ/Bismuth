@@ -120,6 +120,10 @@ public:
 
     void reset();
 
+    inline void setDebugTextEntry(const char* name, std::string value) {
+        debugTextEntries[name] = value;
+    }
+
 public:
     static Ref<Renderer> create(PlayLayer* layer, cocos2d::CCArray* objects);
 
@@ -137,6 +141,8 @@ private:
     bool debugToolsEnabled = false;
     bool disableObjectPulse = false;
 
+    std::map<std::string, std::string> debugTextEntries;
+
     u64 rendererStartTime = 0;
 
     std::unordered_map<GameObject*, usize> objectIndicies;
@@ -145,6 +151,8 @@ private:
 
     std::set<cocos2d::CCSpriteBatchNode*> vanillaBatchNodes;
     std::vector<ObjectBatchNode*> batchNodes;
+
+    float fpsUpdateTimer = 0.0f;
 
     cocos2d::CCTexture2D* spriteSheets[(i32)SpriteSheet::COUNT] = { nullptr };
 

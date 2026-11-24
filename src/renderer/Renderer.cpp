@@ -110,18 +110,6 @@ bool Renderer::init(PlayLayer* layer, CCArray* levelObjects) {
             continue;
         }
 
-        if (
-            object->isTrigger() ||
-            object->m_isHide ||
-            object->m_objectID == GUIDE_OBJECT_ID ||
-            object->m_objectID == KEYFRAME_OBJECT_ID
-        ) {
-            continue;
-        }
-
-        if (object == layer->m_endPortal)
-            continue;
-
         DEBUG_LOG("- {}, id: {}", (void*)object, object->m_objectID);
         DEBUG_LOG("  - rotation: {}, {}", object->m_startRotationX, object->m_startRotationY);
         DEBUG_LOG("  - scale: {}, {}", object->m_startScaleX, object->m_startScaleY);
@@ -136,6 +124,7 @@ bool Renderer::init(PlayLayer* layer, CCArray* levelObjects) {
         DEBUG_LOG("  - glowSprite.color: {}", object->m_glowSprite ? object->m_glowSprite->getColor() : ccColor3B {0, 0, 0});
         DEBUG_LOG("  - opacityMod: {}", object->m_opacityMod);
         DEBUG_LOG("  - isDecoration2: {}", object->m_isDecoration2);
+        DEBUG_LOG("  - objectType: {}", (int)object->m_objectType);
         DEBUG_LOG("  - colorSprite: {}", object->m_colorSprite);
         DEBUG_LOG("  - glowSprite: {}", object->m_glowSprite);
         DEBUG_LOG("  - isObjectBlack: {}", object->m_isObjectBlack);
@@ -150,6 +139,18 @@ bool Renderer::init(PlayLayer* layer, CCArray* levelObjects) {
             DEBUG_LOG("  - detailHSV: {} {} {} {} {}", object->m_detailColor->m_hsv.h, object->m_detailColor->m_hsv.s, object->m_detailColor->m_hsv.v, object->m_detailColor->m_hsv.absoluteSaturation, object->m_detailColor->m_hsv.absoluteBrightness);
         if (object->getHasRotateAction())
             DEBUG_LOG("  - rotationDelta: {}", ((EnhancedGameObject*)object)->m_rotationDelta);
+
+        if (
+            object->isTrigger() ||
+            object->m_isHide ||
+            object->m_objectID == GUIDE_OBJECT_ID ||
+            object->m_objectID == KEYFRAME_OBJECT_ID
+        ) {
+            continue;
+        }
+
+        if (object == layer->m_endPortal)
+            continue;
 
         sorter.addGameObject(object);
     }
@@ -454,22 +455,26 @@ void Renderer::finish() {
 
 void Renderer::updateDebugText() {
     std::string text = "";
+    
+    if (differenceModeEnabled && enabled)
+        text += "Difference mode is enabled (F9 to disable)\n";
+    else if (!enabled)
+        text += "Bismuth renderer is disabled (F8 to enable)\n";
 
-    if (!enabled) {
-        if (differenceModeEnabled) {
-            text += "Difference mode is enabled (F9 to disable)\n";
-        } else
-            text += "Bismuth renderer is disabled (F8 to enable)\n";
-    } else {
-        if (debugTextEnabled) {
-            auto screenSize = CCDirector::get()->getWinSizeInPixels();
+    if (debugTextEnabled) {
+        auto screenSize = CCDirector::get()->getWinSizeInPixels();
 
-            text += fmt::format("Bismuth renderer {}\n", Mod::get()->getVersion().toVString());
-            text += fmt::format("OpenGL {}\n", (const char*)glGetString(GL_VERSION));
-            text += fmt::format("{}\n", (const char*)glGetString(GL_RENDERER));
-            text += "\n";
-            text += "Press F3 to hide this screen\n";
-        }
+        text += fmt::format("Bismuth renderer {}\n", Mod::get()->getVersion().toVString());
+        text += fmt::format("OpenGL {}\n", (const char*)glGetString(GL_VERSION));
+        text += fmt::format("{}\n", (const char*)glGetString(GL_RENDERER));
+
+        for (auto& [name, value] : debugTextEntries)
+            text += name + ": " + value + "\n";
+
+        text += "\n";
+        if (debugToolsEnabled)
+            text += "Debug tools enabled, all optimizations disabled\n";
+        text += "Press F3 to hide this screen\n";
     }
 
     debugText->setText(text);
@@ -485,8 +490,7 @@ void Renderer::bindCullingComputeShaderBuffers() {
 void Renderer::fetchBlendingStates() {
     for (int i = 0; i < colorChannelsIsBlending.size(); i++) {
         auto vec = layer->m_effectManager->m_colorActionVector[i];
-        if (vec)
-            colorChannelsIsBlending[i] = vec->m_blending;
+        colorChannelsIsBlending[i] = vec ? vec->m_blending : false;
     }
 
     colorChannelsIsBlending[COLOR_CHANNEL_P1]  = true;

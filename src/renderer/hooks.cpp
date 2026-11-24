@@ -10,6 +10,9 @@ using namespace geode::prelude;
 
 static bool newPlayLayer = false;
 
+// static CCLabelBMFont* fpsLabel = nullptr;
+// static float fpsUpdateTimer = 0.0f;
+
 #include <Geode/modify/PlayLayer.hpp>
 class $modify(MyPlayLayer, PlayLayer) {
     void setupHasCompleted() {
@@ -27,6 +30,36 @@ class $modify(MyPlayLayer, PlayLayer) {
                 m_objectLayer->addChild(view, 10000);
                 addChild(view->getText(), 10000);
             }
+
+/*
+            float x = 5;//;
+
+            fpsUpdateTimer = 0.0f;
+            fpsLabel = CCLabelBMFont::create("4645 FPS", "bigFont.fnt");
+            fpsLabel->setAnchorPoint({0, 1});
+            fpsLabel->setPosition({x + CCDirector::get()->getWinSize().width / 2, CCDirector::get()->getWinSize().height});
+            fpsLabel->setScale(1.5);
+            addChild(fpsLabel);
+            
+            auto label = CCLabelBMFont::create("Vanilla", "bigFont.fnt");
+            label->setAnchorPoint({0, 0});
+            label->setPosition({x, 3});
+            label->setScale(1.2);
+            addChild(label);
+            
+            label = CCLabelBMFont::create("Bismuth mod", "bigFont.fnt");
+            label->setAnchorPoint({0, 0});
+            label->setPosition({x + CCDirector::get()->getWinSize().width / 2, 3});
+            label->setScale(1.2);
+            addChild(label);
+
+            auto box = CCLayerColor::create();
+            box->ignoreAnchorPointForPosition(false);
+            box->setAnchorPoint({1, 0});
+            box->setPosition({CCDirector::get()->getWinSize().width, 0});
+            box->setColor({0, 0, 0});
+            addChild(box);
+*/
         }
         return ret;
     }
@@ -120,6 +153,22 @@ static void removeDecoObjects(CCArray* array) {
 #include <Geode/modify/GJBaseGameLayer.hpp>
 class $modify(RendererGJBaseGameLayer, GJBaseGameLayer) {
     void update(float dt) {
+/*
+        auto director = CCDirector::get();
+        int fps = lroundf(director->m_uFrames / director->m_fFpsAccumDt);
+
+        fpsUpdateTimer += director->getDeltaTime();
+
+        while (fpsUpdateTimer >= 0.1f) {
+            fpsUpdateTimer -= 0.1f;
+            if (fpsLabel && fps != 0)
+                fpsLabel->setString(fmt::format("{} FPS", fps).c_str());
+        }
+
+        if (director->m_pFPSNode)
+            director->m_pFPSNode->setVisible(false);
+*/
+
         GJBaseGameLayer::update(dt);
 
         auto renderer = Renderer::get();
@@ -134,6 +183,8 @@ class $modify(RendererGJBaseGameLayer, GJBaseGameLayer) {
             return;
         }
 
+        i32 objectsMoved = 0;
+
         m_effectManager->processMoveCalculations();
         for (auto node : m_effectManager->m_unkVector6c0) {
             if (node->m_unk0d0)
@@ -145,6 +196,7 @@ class $modify(RendererGJBaseGameLayer, GJBaseGameLayer) {
 
             if (renderer->useOptimizations()) {
                 auto objects = renderer->getGroupManager().getVanillaRotateGroup(groupId);
+                objectsMoved += objects.size();
 
                 float moveX = node->m_unk038;
                 float moveY = node->m_unk040;
@@ -168,14 +220,20 @@ class $modify(RendererGJBaseGameLayer, GJBaseGameLayer) {
                 }
             } else {
                 CCArray* objects = getStaticGroup(groupId);
-                if (objects)
+                if (objects) {
                     moveObjects(objects, node->m_unk038, node->m_unk040, 0);
+                    objectsMoved += objects->count();
+                }
 
                 objects = getOptimizedGroup(groupId);
-                if (objects)
+                if (objects) {
                     moveObjects(objects, node->m_unk090, node->m_unk098, 0);
+                    objectsMoved += objects->count();
+                }
             }
         }
+
+        renderer->setDebugTextEntry("Physics objects moved", std::to_string(objectsMoved));
     }
 
     void siphon_processRotationActions() {
@@ -184,6 +242,8 @@ class $modify(RendererGJBaseGameLayer, GJBaseGameLayer) {
             GJBaseGameLayer::processRotationActions();
             return;
         }
+
+        i32 objectsRotated = 0;
 
         auto eman = m_effectManager;
         for (auto cmdObj : eman->m_unkVector5b0) {
@@ -195,6 +255,10 @@ class $modify(RendererGJBaseGameLayer, GJBaseGameLayer) {
 
             auto centerObject = tryGetMainObject(centerId);
             auto staticGroup = getStaticGroup(targetId);
+
+            auto group = getGroup(targetId);
+            if (group)
+                objectsRotated += group->count();
 
             float rotation;
             if (staticGroup->count() != 0)
@@ -225,6 +289,8 @@ class $modify(RendererGJBaseGameLayer, GJBaseGameLayer) {
                     renderer->getGroupManager().moveGroup(targetId, extraMove.x, extraMove.y);
             }
         }
+
+        renderer->setDebugTextEntry("Physics objects rotated", std::to_string(objectsRotated));
 
         ((decomp_GJBaseGameLayer*)this)->processRotationActions();
     }

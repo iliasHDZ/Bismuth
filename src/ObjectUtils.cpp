@@ -153,20 +153,20 @@ void ObjectUtils::unpackSpriteRecursively(
 ) {
     float savedRotX = object->getRotationX();
     float savedRotY = object->getRotationY();
-    float savedScaleX = object->getRScaleX();
-    float savedScaleY = object->getRScaleY();
+    float savedScaleX = object->getScaleX();
+    float savedScaleY = object->getScaleY();
 
     object->setRotationX(object->m_startRotationX);
     object->setRotationY(object->m_startRotationY);
-    object->setRScaleX(object->m_startScaleX);
-    object->setRScaleY(object->m_startScaleY);
+    object->setRScaleX(1.0f);
+    object->setRScaleY(1.0f);
 
     transform = CCAffineTransformConcat(sprite->nodeToParentTransform(), transform);
     
     object->setRotationX(savedRotX);
     object->setRotationY(savedRotY);
-    object->setRScaleX(savedScaleX);
-    object->setRScaleY(savedScaleY);
+    object->setScaleX(savedScaleX);
+    object->setScaleY(savedScaleY);
 
     bool isSpriteBlack = false;
 

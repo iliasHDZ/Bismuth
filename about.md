@@ -1,9 +1,9 @@
 # Bismuth
 
-<cr>**WARNING: This mod is still in the experimental stage and
-is very buggy! Alot of levels will not display correctly. This mod
-should be percieved as something to experiment with rather than
-something to use in actual play.**</c>
+<cr>WARNING: This mod is still experimental and most 2.2 levels
+will look broken. It is still a work-in-progress!</c>
+
+<cg>Consider supporting Bismuth:</c> https://ko-fi.com/iliashdz
 
 A rendering optimization mod that does alot of the trigger
 and visibility calculations on the GPU. Bismuth completely
@@ -12,13 +12,15 @@ replaces and recreates GD's object rendering from scratch.
 Bismuth is **especially** effective with high object counts
 and excessive move/rotate trigger logic.
 
-Currently, this mod renders 2.1 levels best. Newer 2.2
-features and visual quirks haven't been implemented yet.
+Currently, this mod renders 2.1 levels nearly perfectly.
+Newer 2.2 features and visual quirks haven't been
+implemented yet.
 
 Levels with great results:
 - Peaceful
-- A daydream journey
+- A Daydream Journey
 - Departure
+- Leyak
 - Slaughterhouse
 
 Bismuth currently works best on medium to high-end GPUs.

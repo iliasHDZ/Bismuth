@@ -1,1 +1,1 @@
-Support thing coming soon here.
+You can support Bismuth developement by donating to my Ko-Fi: https://ko-fi.com/iliashdz

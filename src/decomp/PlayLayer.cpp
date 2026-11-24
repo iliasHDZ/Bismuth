@@ -365,6 +365,7 @@ void decomp_PlayLayer::optimized_updateVisibility(float delta) {
     if (m_endPortal)
         m_endPortal->activateObject();
 
+
     if (shouldDebugDraw()) {
         for (int index = 0; index < m_activeObjectsCount; index++) {
             GameObject* object = m_activeObjects[index];
@@ -373,7 +374,6 @@ void decomp_PlayLayer::optimized_updateVisibility(float delta) {
                 object->setOpacity(0);
             }
         }
-
         updateDebugDraw();
     }
 }

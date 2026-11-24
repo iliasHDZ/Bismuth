@@ -178,14 +178,16 @@ void GroupManager::fetchVanilaRotateGroups() {
 
     vanillaRotateGroups.resize(std::max(layer->m_staticGroups.size(), layer->m_optimizedGroups.size()));
 
-    for (GroupID id = 1; id < layer->m_staticGroups.size(); id++) {
-        CCArray* group = layer->m_staticGroups[id];
+    for (GroupID id = 1; id <= maxGroupId; id++) {
+        CCArray* group = layer->getGroup(id);
         if (!group) continue;
 
         auto& dstGroup = vanillaRotateGroups[id];
 
         for (auto object : CCArrayExt<GameObject*, false>(group)) {
-            if (object && object->m_objectType != GameObjectType::Decoration)
+            if (!object) continue;
+
+            if (object->m_objectType != GameObjectType::Decoration || object->m_objectID == KEYFRAME_OBJECT_ID)
                 dstGroup.insert(object);
         }
     }
