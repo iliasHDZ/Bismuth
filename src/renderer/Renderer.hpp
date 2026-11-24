@@ -133,6 +133,9 @@ public:
      */
     static Ref<Renderer> get();
 
+public:
+    float audioScale;
+
 private:
     PlayLayer* layer;
 

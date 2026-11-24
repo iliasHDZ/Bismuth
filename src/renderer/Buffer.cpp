@@ -91,7 +91,7 @@ UPtr<Buffer> Buffer::create(const char* name, usize size, GLenum usage) {
     ret->name = name;
     ret->id = buffer;
     ret->size = size;
-    ret->shouldMap = Mod::get()->getSettingValue<bool>("use_mapped_buffers");
+    ret->shouldMap = false;//Mod::get()->getSettingValue<bool>("use_mapped_buffers");
 
     return ret;
 }

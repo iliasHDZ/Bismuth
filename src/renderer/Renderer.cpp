@@ -325,15 +325,8 @@ void Renderer::prepareShaderUniforms() {
 
     if (disableObjectPulse)
         gameState.u_audioScale = 0.5;
-    else {
-        if (layer->m_skipAudioStep)
-            gameState.u_audioScale = FMODAudioEngine::sharedEngine()->getMeteringValue();
-        else
-            gameState.u_audioScale = layer->m_audioEffectsLayer->m_audioScale;
-        
-        if (layer->m_isSilent || (layer->m_isPracticeMode && !layer->m_practiceMusicSync))
-            gameState.u_audioScale = 0.5;
-    }
+    else
+        gameState.u_audioScale = audioScale;
 
     gameStateBuffer->write(&gameState, sizeof(gameState));
 }
@@ -500,15 +493,6 @@ void Renderer::fetchBlendingStates() {
 
 void Renderer::update(float dt) {
     gameTimer += dt;
-    
-    float audioScale;
-    if (layer->m_skipAudioStep)
-        audioScale = FMODAudioEngine::sharedEngine()->getMeteringValue();
-    else
-        audioScale = layer->m_audioEffectsLayer->m_audioScale;
-    
-    if (layer->m_isSilent || (layer->m_isPracticeMode && !layer->m_practiceMusicSync))
-        audioScale = 0.5;
 
     if (debugText->isVisible())
         updateDebugText();

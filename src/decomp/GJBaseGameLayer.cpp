@@ -517,3 +517,107 @@ void decomp_GJBaseGameLayer::processMoveActionsStep(float dt, bool visibleFrame)
             m_disabledObjects[i]->quickUpdatePosition();
     }
 }
+
+#define kMaxCameraBounds 10000000.0f
+
+void decomp_GJBaseGameLayer::optimized_preUpdateVisibility(float dt) {
+    CCSize winSize = CCDirector::sharedDirector()->getWinSize();
+
+    CCPoint camPos = m_gameState.m_cameraLastPosition;
+    float zoom = m_gameState.m_cameraZoom;
+
+    if (m_isEditor && !m_started) {
+        zoom = m_objectLayer->getScale();
+        camPos = -m_objectLayer->getPosition() * (1.f / zoom);
+
+        if (m_gameState.m_cameraShakeEnabled) {
+            camPos -= m_gameState.m_cameraShakeOffset;
+        }
+    }
+
+    float scaledScreenWidth = winSize.width / zoom;
+    float scaledScreenHeight = winSize.height / zoom;
+
+    m_cameraWidth = scaledScreenWidth;
+    m_cameraHeight = scaledScreenHeight;
+    m_halfCameraWidth = scaledScreenWidth / 2;
+    m_cameraUnzoomedX = m_gameState.m_cameraLastPosition.x + winSize.width / 2;
+    m_activeObjectsCount = 0;
+
+    CCRect viewRect = CCRectMake(camPos.x, camPos.y, scaledScreenWidth, scaledScreenHeight);
+
+    // calculate difference when camera is rotated
+    if (m_gameState.m_cameraAngle == 0.f) {
+        m_cameraWidthOffset = 0.f;
+        m_cameraHeightOffset = 0.f;
+        m_cameraUnzoomedHeightOffset = 0.f;
+        m_targetCameraHeightOffset = 0.f;
+    }
+    else {
+        if (m_calculateTargetHeightOffset) {
+            m_cameraObb2->calculateWithCenter(
+                ccp(winSize.width / 2, winSize.height / 2),
+                viewRect.size.width,
+                viewRect.size.height,
+                CC_DEGREES_TO_RADIANS(m_gameState.m_targetCameraAngle)
+            );
+
+            m_targetCameraHeightOffset = m_cameraObb2->getBoundingRect().size.height - viewRect.size.height;
+            m_calculateTargetHeightOffset = false;
+        }
+        
+        m_cameraObb2->calculateWithCenter(
+            ccp(winSize.width / 2, winSize.height / 2),
+            viewRect.size.width,
+            viewRect.size.height,
+            CC_DEGREES_TO_RADIANS(m_gameState.m_cameraAngle)
+        );
+
+        CCRect camBounds = m_cameraObb2->getBoundingRect();
+
+        m_cameraUnzoomedHeightOffset = camBounds.size.height - viewRect.size.height;
+        m_cameraWidthOffset = (camBounds.size.width - viewRect.size.width) * zoom;
+        m_cameraHeightOffset = (camBounds.size.height - viewRect.size.height) * zoom;
+    }
+
+    bool rotated = m_gameState.m_cameraAngle != 0.f;
+    if (m_groundLayer->m_cameraRotated != rotated) {
+
+        m_groundLayer->m_cameraRotated = rotated;
+        m_groundLayer2->m_cameraRotated = rotated;
+        m_groundLayer->scaleGround(m_groundLayer->getScaleX());
+        m_groundLayer2->scaleGround(m_groundLayer2->getScaleX());
+    }
+
+    // scale view rect and update ground shadows if camera is tilted
+    if (m_gameState.m_cameraAngle != 0.f && m_cameraWidthOffset != 0.f) {
+        updateGroundShadows();
+        float scaledCameraWidthOffset = m_cameraWidthOffset / zoom;
+        float scaledCameraHeightOffset = m_cameraHeightOffset / zoom;
+
+        viewRect.origin.x -= scaledCameraWidthOffset / 2;
+        viewRect.origin.y -= scaledCameraHeightOffset / 2;
+        viewRect.size.width += scaledCameraWidthOffset;
+        viewRect.size.height += scaledCameraHeightOffset;
+
+        m_updateGroundShadows = true; // applies next frame if camera is straight
+    }
+    else if (m_updateGroundShadows) {
+        m_groundLayer->updateShadowXPos(0.f, 0.f);
+        m_groundLayer->updateShadows();
+        m_groundLayer2->updateShadowXPos(0.f, 0.f);
+        m_groundLayer2->updateShadows();
+        m_updateGroundShadows = false;
+    }
+
+    float camRight = viewRect.getMaxX();
+    float camLeft = viewRect.getMinX();
+    float camTop = viewRect.getMaxY();
+    float camBottom = viewRect.getMinY();
+
+    // camera bounds cap at 10,000,000 (kMaxCameraBounds)
+    m_leftSectionIndex = std::max(floorf(std::min(camLeft, kMaxCameraBounds) * m_sectionXFactor) - 1.f, 0.0f);
+    m_rightSectionIndex = std::max(ceilf(std::min(camRight, kMaxCameraBounds) * m_sectionXFactor) + 1.f, 0.0f);
+    m_bottomSectionIndex = std::max(floorf(std::min(camBottom, kMaxCameraBounds) * m_sectionYFactor) - 1.f, 0.0f);
+    m_topSectionIndex = std::max(ceilf(std::min(camTop, kMaxCameraBounds) * m_sectionYFactor) + 1.f, 0.0f);
+}

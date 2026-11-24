@@ -18,4 +18,6 @@ public:
     void processPlayerFollowActions(float dt);
 
     void processMoveActionsStep(float dt, bool visibleFrame);
+
+    void optimized_preUpdateVisibility(float dt);
 };

@@ -35,6 +35,8 @@ it is recommended to **disable Bismuth** in the **settings window**
 when using overdraw view for creating. Overdraw view can be enabled
 by pressing **F4** in-game or in the editor.
 
+Bismuth is currently incompatible with Practice Checkpoint Permanence Mod!
+
 I am currently not accepting bugfixes as there is already alot
 of broken stuff to be fixed first.
 
