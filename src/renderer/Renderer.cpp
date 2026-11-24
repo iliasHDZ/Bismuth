@@ -179,7 +179,6 @@ bool Renderer::init(PlayLayer* layer, CCArray* levelObjects) {
     for (auto object : objects)
         objectBatch.writeGameObject(object);
     objectBatch.finishWriting();
-    generateBatchNodes();
 
     log::info("Sprite count: {}", objectBatch.getSpriteCount());
 
@@ -216,6 +215,8 @@ bool Renderer::init(PlayLayer* layer, CCArray* levelObjects) {
                 object->deactivateObject(true);
         }
     }
+
+    generateBatchNodes();
 
     setZOrder(-99999);
     setEnabled(true);
@@ -517,6 +518,25 @@ Ref<Renderer> Renderer::create(PlayLayer* layer, CCArray* objects) {
         ren->autorelease();
         return ren;
     }
+
+    auto notif = Notification::create(
+        "Failed to initialize Bismuth. Proceeding with Vanilla.",
+        NotificationIcon::Error,
+        5.0f
+    );
+
+    notif->retain();
+
+    CCDirector::get()->getActionManager()->addAction(
+        CCSequence::create(
+            CCDelayTime::create(0.1f),
+            CCCallFunc::create(notif, callfunc_selector(Notification::show)),
+            CCCallFunc::create(notif, callfunc_selector(Notification::release)),
+            NULL
+        ),
+        notif,
+        false
+    );
     
     log::error("Failed to initialize renderer");
     delete ren;
