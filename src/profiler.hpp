@@ -3,7 +3,7 @@
 #include <Geode/Geode.hpp>
 #include <Geode/modify/CCTextureAtlas.hpp>
 
-#define PROFILER_ENABLED
+// #define PROFILER_ENABLED
 
 #ifdef PROFILER_ENABLED
 #define PROFILER_PUSH(S) profiler::functionPush(S)
