@@ -1,3 +1,8 @@
+# 1.0.0-alpha
+- Added advanced object culling & processing compute shader
+- Ported to 2.2091
+- Many bug fixes
+
 # 0.1.0-alpha
 - Added rotate trigger support
 - Added follow trigger support

@@ -29,6 +29,11 @@ For low-end GPUs like many **Intel GPUs**, the advantages
 of Bismuth's culling system are way less and in fact can
 be **slower** than vanilla. They may also crash sometimes!
 
+Bismuth currently may cause lag spikes at specific parts of
+some massive level when playing through them for the first
+time, they don't happen a second time at the same spot unless
+you reenter the level.
+
 This mod features **overdraw view**! A helpful feature for
 creators to visualize overdraw. Since Bismuth is still unstable,
 it is recommended to **disable Bismuth** in the **settings window**
