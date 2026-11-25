@@ -20,7 +20,9 @@ STORAGE_BUFFER(PULSE_ENTRY_BUFFER_BINDING) PulseEntryBuffer {
 
 vec3 applyPulseEntry(vec3 color, PulseGroupEntry entry);
 
-vec3 applyPulseEntries(vec3 color, uint pulseIndex, bool isBaseColor) {
+vec4 applyPulseEntries(vec4 colorIn, uint pulseIndex, bool isBaseColor) {
+    vec3 color = colorIn.rgb;
+
     for (;; pulseIndex++) {
         uint flags = u_pulseEntries[pulseIndex].flags;
         if (flags == 0)
@@ -35,7 +37,7 @@ vec3 applyPulseEntries(vec3 color, uint pulseIndex, bool isBaseColor) {
         color = applyPulseEntry(color, u_pulseEntries[pulseIndex]);
     }
 
-    return color;
+    return vec4(color, colorIn.a);
 }
 
 vec3 applyPulseEntry(vec3 color, PulseGroupEntry entry) {

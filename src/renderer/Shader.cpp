@@ -196,7 +196,7 @@ static std::optional<std::string> preprocessShaderFile(const asp::fs::Path& path
     if (!isNVidiaGPU())
         removeLinesStartingWith(codeOut, "#line");
 
-    return "#version 460\n" + codeOut;
+    return "#version 430\n" + codeOut;
 }
 
 static bool isShaderSuccessOrPrintError(u32 shader, i32 type) {

@@ -92,6 +92,12 @@ void processSprite(uint preCulledSpriteIndex) {
     vec4 color;
     if (colorChannel == COLOR_CHANNEL_LIGHTER) {
         color = getColorChannelColor(object.baseColorChannelId);
+        
+        if (state.pulseIndex != 0)
+            color = applyPulseEntries(color, state.pulseIndex, true);
+
+        if ((objectFlags & OBJECT_FLAG_HAS_BASE_HSV) != 0)
+            color = applyHSV(object.baseHSV, color);
 
         HSVStruct hsv;
         hsv.hue = 0.0;
@@ -101,11 +107,12 @@ void processSprite(uint preCulledSpriteIndex) {
         hsv.valAdd = true;
 
         color = applyHSVStruct(hsv, color);
-    } else
+    } else {
         color = getColorChannelColor(colorChannel);
-
-    if (state.pulseIndex != 0)
-        color = vec4(applyPulseEntries(color.rgb, state.pulseIndex, spriteType != SPRITE_TYPE_DETAIL), color.a);
+        
+        if (state.pulseIndex != 0)
+            color = applyPulseEntries(color, state.pulseIndex, spriteType != SPRITE_TYPE_DETAIL);
+    }
 
     vec4 opacityValues = unpackUnorm4x8(object.opacityValues);
 
