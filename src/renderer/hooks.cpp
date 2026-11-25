@@ -93,6 +93,9 @@ class $modify(MyPlayLayer, PlayLayer) {
         }
 
         PlayLayer::updateVisibility(dt);
+
+        if (renderer)
+            Renderer::get()->audioScale = m_player1->m_audioScale;
     }
 
     CheckpointObject* createCheckpoint() {

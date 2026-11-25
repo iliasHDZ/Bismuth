@@ -131,7 +131,12 @@ bool Renderer::init(PlayLayer* layer, CCArray* levelObjects) {
         DEBUG_LOG("  - isObjectChildrenBlack: {}", object->m_isColorSpriteBlack);
         DEBUG_LOG("  - blackChildOpacity: {}", object->m_blackChildOpacity);
         DEBUG_LOG("  - blackChildOpacityLocked: {}", object->m_blackChildOpacityLocked);
+        DEBUG_LOG("  - activeMainColorID: {}", object->m_activeMainColorID);
         DEBUG_LOG("  - activeDetailColorID: {}", object->m_activeDetailColorID);
+        DEBUG_LOG("  - m_usesAudioScale: {}", object->m_usesAudioScale);
+        DEBUG_LOG("  - m_customAudioScale: {}", object->m_customAudioScale);
+        DEBUG_LOG("  - m_minAudioScale: {}", object->m_minAudioScale);
+        DEBUG_LOG("  - m_maxAudioScale: {}", object->m_maxAudioScale);
         DEBUG_LOG("  - childCount: {}", object->getChildrenCount());
         if (object->m_baseColor && object->m_baseColor->m_usesHSV)
             DEBUG_LOG("  - baseHSV: {} {} {} {} {}", object->m_baseColor->m_hsv.h, object->m_baseColor->m_hsv.s, object->m_baseColor->m_hsv.v, object->m_baseColor->m_hsv.absoluteSaturation, object->m_baseColor->m_hsv.absoluteBrightness);
@@ -364,9 +369,11 @@ void Renderer::generateObjectInfoBuffer(std::vector<GameObject*>& objects) {
     for (auto object : objects) {
         auto objectInfo = &objectInfos[index];
 
-        if (object->getHasRotateAction())
-            objectInfo->rotationSpeed = ((EnhancedGameObject*)object)->m_rotationDelta; // 'rotationDelta' is incorrect naming
-        else
+        if (object->getHasRotateAction() && !((EnhancedGameObject*)object)->m_disableRotation) {
+            auto rotatingObject = (EnhancedGameObject*)object;
+
+            objectInfo->rotationSpeed = rotatingObject->m_rotationDelta; // 'rotationDelta' is incorrect naming
+        } else
             objectInfo->rotationSpeed = 0.0;
 
         objectInfo->flags = 0;
