@@ -81,7 +81,7 @@ void drawFullscreenQuad() {
     glDrawArrays(GL_TRIANGLES, 0, 6);
 }
 
-#include <geode/modify/CCDirector.hpp>
+#include <Geode/modify/CCDirector.hpp>
 class $modify(CommonCCDirector, CCDirector) {
     void purgeDirector() {
         if (fullscreenQuadVAO)
