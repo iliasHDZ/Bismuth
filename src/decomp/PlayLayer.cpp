@@ -38,7 +38,7 @@ void decomp_PlayLayer::optimized_updateVisibility(float dt) {
     m_player1->m_audioScale = audioScale;
     m_player2->m_audioScale = audioScale;
 
-    // TODO: Cull checkpoints and end portal!
+    /* TODO: Cull checkpoints and end portal! */
 
     for (auto checkpoint : CCArrayExt<CheckpointObject*, false>(m_checkpointArray))
         checkpoint->getObject()->activateObject();
