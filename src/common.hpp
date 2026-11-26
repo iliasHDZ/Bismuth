@@ -95,7 +95,9 @@ inline bool isAMDGPU() {
 }
 
 inline bool isIntelGPU() {
-    return strcmp((const char*)glGetString(GL_VENDOR), "Intel") == 0;
+    auto vendor = std::string((const char*)glGetString(GL_VENDOR));
+    auto renderer = std::string((const char*)glGetString(GL_RENDERER));
+    return vendor == "Intel" && !renderer.starts_with("Mesa");
 }
 
 bool isOpenGLAtLeastVersion(u32 major, u32 minor);

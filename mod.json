@@ -5,7 +5,7 @@
 	},
 	"id": "iliashdz.bismuth",
 	"name": "Bismuth (experimental)",
-	"version": "v1.0.1-alpha",
+	"version": "v1.0.2-alpha",
 	"developer": "IliasHDZ",
 	"description": "Rendering optimization mod",
 	"dependencies": {
@@ -50,7 +50,7 @@
 			"name": "Enable debug tools",
 			"type": "bool",
 			"default": false,
-			"description": "Allows you to enable and disable Bismuth while playing by pressing F8. It also allows you to use Difference Mode by pressing F9 (Difference Mode is very unstable).\nPressing F7 in the editor selects all objects right of the screen.\n\n WARNING: This option effectively removes any optimization."
+			"description": "Allows you to enable and disable Bismuth while playing by pressing F8. It also allows you to use Difference Mode by pressing F9 (Difference Mode is very unstable).\n\n WARNING: This option effectively removes any optimization."
 		},
 		"disable_object_pulse": {
 			"name": "Disable object pulse",

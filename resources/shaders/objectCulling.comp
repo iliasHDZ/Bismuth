@@ -208,20 +208,22 @@ float calculateAudioScale() {
 }
 
 float getRelativeMod(float xPos, float left, float right, float offset) {
-    float result = u_cameraViewSize.x * 0.5;
+    float halfCamWidth = u_cameraViewSize.x * 0.5;
 
+    float result;
     if (xPos > result + u_cameraPosition.x)
-        result = (result - (xPos - offset - u_cameraPosition.x - result)) * right;
+        result = (halfCamWidth - (xPos - offset - u_cameraPosition.x - halfCamWidth)) * right;
     else
-        result = (result - (result + u_cameraPosition.x - xPos - offset)) * left;
+        result = (halfCamWidth - (halfCamWidth + u_cameraPosition.x - xPos - offset)) * left;
 
     return clamp(result, 0.0, 1.0);
 }
 
 vec2 calculateInvisibleBlockOpacity() {
-    float centerLeftX  = u_winSize.x * 0.5 - 75.0;
-    float centerRightX = centerLeftX + 110.0;
-    float someScreenLeft = u_screenRight - centerRightX - 90.0;
+    float leftFadeBound  = u_winSize.x / 2.0 - 75.0;
+    float rightFadeBound = leftFadeBound + 110.0;
+    float rightFadeWidth = u_screenRight - rightFadeBound - 90.0;
+    float leftFadeWidth  = rightFadeBound - 30.0;
 
     float fadePosX = objectPosition.x;
     if (fadePosX <= u_cameraUnzoomedX)
@@ -234,10 +236,10 @@ vec2 calculateInvisibleBlockOpacity() {
     // INVISIBLE BLOCK OPACITY IS INACCURATE AND I CAN'T SEEM TO FIGURE IT OUT, I'M GOING CRAZY
 
     float someWidth1;
-    if (fadePosX <= centerRightX + u_cameraPosition.x)
-        someWidth1 = (centerLeftX + u_cameraPosition.x - fadePosX) / max(centerLeftX - 30.0, 1.0);
+    if (fadePosX <= rightFadeBound + u_cameraPosition.x)
+        someWidth1 = (leftFadeBound + u_cameraPosition.x - fadePosX) / max(leftFadeWidth, 1.0);
     else
-        someWidth1 = (fadePosX - u_cameraPosition.x - centerRightX) / max(someScreenLeft, 1.0);
+        someWidth1 = (fadePosX - u_cameraPosition.x - rightFadeBound) / max(rightFadeWidth, 1.0);
 
     someWidth1 = clamp(someWidth1, 0.0, 1.0);
 

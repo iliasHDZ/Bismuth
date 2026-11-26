@@ -18,6 +18,6 @@ $on_mod(Loaded) {
                 hotKey = hotKey->next;
             }
         }
-        return success;
+        return false;
     }).leak();
 }

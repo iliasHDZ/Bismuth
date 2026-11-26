@@ -1,3 +1,8 @@
+# 1.0.2-alpha
+- Fixed lighter color channel
+- Fixed disable rotation
+- Fixed problem P key isn't being registed
+
 # 1.0.1-alpha
 - Removed warning notification when running with Bismuth disabled
 

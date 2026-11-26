@@ -467,6 +467,7 @@ void Renderer::updateDebugText() {
 
         text += fmt::format("Bismuth renderer {}\n", Mod::get()->getVersion().toVString());
         text += fmt::format("OpenGL {}\n", (const char*)glGetString(GL_VERSION));
+        text += fmt::format("{}\n", (const char*)glGetString(GL_VENDOR));
         text += fmt::format("{}\n", (const char*)glGetString(GL_RENDERER));
 
         for (auto& [name, value] : debugTextEntries)
