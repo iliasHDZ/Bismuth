@@ -353,23 +353,6 @@ class $modify(RendererGJBaseGameLayer, GJBaseGameLayer) {
         if (renderer)
             renderer->getGroupManager().toggleGroup(id, activate);
     }
-
-    void optimizeMoveGroups() {
-        GJBaseGameLayer::optimizeMoveGroups();
-
-        auto renderer = Renderer::get();
-        if (!renderer || !renderer->useOptimizations())
-            return;
-
-        for (auto array : m_optimizedGroups) {
-            if (array)
-                removeDecoObjects(array);
-        }
-        for (auto array : m_staticGroups) {
-            if (array)
-                removeDecoObjects(array);
-        }
-    }
 };
 
 #include <Geode/modify/CCDisplayLinkDirector.hpp>

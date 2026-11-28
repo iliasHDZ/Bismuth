@@ -207,45 +207,59 @@ float calculateAudioScale() {
     return scale;
 }
 
-float getRelativeMod(float xPos, float left, float right, float offset) {
-    float halfCamWidth = u_cameraViewSize.x * 0.5;
-
-    float result;
-    if (xPos > result + u_cameraPosition.x)
-        result = (halfCamWidth - (xPos - offset - u_cameraPosition.x - halfCamWidth)) * right;
-    else
-        result = (halfCamWidth - (halfCamWidth + u_cameraPosition.x - xPos - offset)) * left;
-
-    return clamp(result, 0.0, 1.0);
-}
-
 vec2 calculateInvisibleBlockOpacity() {
     float leftFadeBound  = u_winSize.x / 2.0 - 75.0;
     float rightFadeBound = leftFadeBound + 110.0;
     float rightFadeWidth = u_screenRight - rightFadeBound - 90.0;
-    float leftFadeWidth  = rightFadeBound - 30.0;
+    float leftFadeWidth  = leftFadeBound - 30.0;
 
-    float fadePosX = objectPosition.x;
-    if (fadePosX <= u_cameraUnzoomedX)
-        fadePosX += u_objects[objectIndex].fadeMargin;
+    float objX = objectPosition.x;
+
+    float marginX = objX;
+    if (objX <= u_cameraUnzoomedX)
+        marginX += u_objects[objectIndex].fadeMargin;
     else
-        fadePosX -= u_objects[objectIndex].fadeMargin;
+        marginX -= u_objects[objectIndex].fadeMargin;
     
-    float relMod = getRelativeMod(fadePosX, 0.02, 0.014285714, 0.0);
+    // float relMod = getRelativeMod(fadePosX, 0.02, 0.014285714, 0.0);
+    
+    float halfCameraWidth = u_cameraViewSize.x * 0.5;
+    float camX = u_cameraPosition.x;
+
+    float edgeFactor;
+    float distanceFromCenter;
+    if (objX <= halfCameraWidth + camX) {
+        edgeFactor = 0.014285714;
+        distanceFromCenter = (halfCameraWidth + camX) - objX;
+    } else {
+        edgeFactor = 0.02;
+        distanceFromCenter = objX - (halfCameraWidth + camX);
+    }
+
+    float visibilityScale = (halfCameraWidth - distanceFromCenter) * edgeFactor;
+    float edgeVisibilityFactor = clamp(visibilityScale, 0.0, 1.0);
+
+    float distanceFromFade;
+    float fadeWidth;
+
+    if (marginX <= camX + rightFadeBound) {
+        distanceFromFade = (camX + leftFadeBound) - marginX;
+        fadeWidth = leftFadeWidth;
+    } else {
+        distanceFromFade = (marginX - camX) - rightFadeBound;
+        fadeWidth = rightFadeWidth;
+    }
+
+    if (fadeWidth <= 1.0)
+        fadeWidth = 1.0;
+
+    float fadeAlpha = clamp(distanceFromFade / fadeWidth, 0.0, 1.0);
 
     // INVISIBLE BLOCK OPACITY IS INACCURATE AND I CAN'T SEEM TO FIGURE IT OUT, I'M GOING CRAZY
 
-    float someWidth1;
-    if (fadePosX <= rightFadeBound + u_cameraPosition.x)
-        someWidth1 = (leftFadeBound + u_cameraPosition.x - fadePosX) / max(leftFadeWidth, 1.0);
-    else
-        someWidth1 = (fadePosX - u_cameraPosition.x - rightFadeBound) / max(rightFadeWidth, 1.0);
-
-    someWidth1 = clamp(someWidth1, 0.0, 1.0);
-
     return vec2(
-        min(someWidth1 * 0.95 + 0.05, relMod),
-        min(someWidth1 * 0.85 + 0.15, relMod)
+        min(fadeAlpha * 0.95 + 0.05, edgeVisibilityFactor),
+        min(fadeAlpha * 0.85 + 0.15, edgeVisibilityFactor)
     );
 }
 

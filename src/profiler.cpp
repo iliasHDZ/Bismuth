@@ -166,6 +166,9 @@ _PROFILER_HOOK_VOID(PlayLayer, updateVisibility, float);
 #include <Geode/modify/CCNode.hpp>
 // _PROFILER_HOOK_VOID(cocos2d::CCNode, visit);
 
+#include <Geode/modify/GJEffectManager.hpp>
+_PROFILER_HOOK_VOID(GJEffectManager, prepareMoveActions, float, bool);
+
 #include <Geode/modify/GJBaseGameLayer.hpp>
 _PROFILER_HOOK_VOID(GJBaseGameLayer, update, float);
 _PROFILER_HOOK_VOID(GJBaseGameLayer, preUpdateVisibility, float);

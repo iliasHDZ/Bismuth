@@ -45,6 +45,4 @@ Bismuth is currently incompatible with Practice Checkpoint Permanence Mod!
 I am currently not accepting bugfixes as there is already alot
 of broken stuff to be fixed first.
 
-Join the Discord server for the latest nightly builds: https://discord.gg/B6H6ZVJx9C
-
 Icon created by Saryu

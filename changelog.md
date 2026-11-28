@@ -1,17 +1,17 @@
-# 1.0.2-alpha
+## 1.0.2-alpha
 - Fixed lighter color channel
 - Fixed disable rotation
 - Fixed problem P key isn't being registed
 
-# 1.0.1-alpha
+## 1.0.1-alpha
 - Removed warning notification when running with Bismuth disabled
 
-# 1.0.0-alpha
+## 1.0.0-alpha
 - Added advanced object culling & processing compute shader
 - Ported to 2.2091
 - Many bug fixes
 
-# 0.1.0-alpha
+## 0.1.0-alpha
 - Added rotate trigger support
 - Added follow trigger support
 - Added shader sprite optimization
@@ -19,7 +19,7 @@
 - Added index culling optimization
 - Fixed Intel (and AMD?) GPU crashes
 
-# 0.0.1-alpha.1
+## 0.0.1-alpha.1
 - Added renderer
 - Added color trigger support
 - Added alpha trigger support
