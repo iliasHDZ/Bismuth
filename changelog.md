@@ -1,3 +1,6 @@
+## 1.0.3-alpha
+- Fixed invisible object not having perfect opacity
+
 ## 1.0.2-alpha
 - Fixed lighter color channel
 - Fixed disable rotation
